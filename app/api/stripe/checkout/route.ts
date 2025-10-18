@@ -1,0 +1,61 @@
+import { type NextRequest, NextResponse } from "next/server"
+import Stripe from "stripe"
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2024-12-18.acacia",
+})
+
+export async function POST(req: NextRequest) {
+  try {
+    const { bookingData } = await req.json()
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price_data: {
+            currency: "usd",
+            product_data: {
+              name: bookingData.serviceName || "Booking Service",
+              description: `Booking for ${bookingData.date} at ${bookingData.time}`,
+            },
+            unit_amount: bookingData.price * 100, // Convert to cents
+          },
+          quantity: 1,
+        },
+      ],
+      mode: "payment",
+      success_url: `${req.headers.get("origin")}/booking/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${req.headers.get("origin")}/booking/cancel`,
+      metadata: {
+        bookingData: JSON.stringify(bookingData),
+      },
+    })
+
+    return NextResponse.json({ sessionId: session.id })
+  } catch (error) {
+    console.error("Error creating checkout session:", error)
+    return NextResponse.json({ error: "Error creating checkout session" }, { status: 500 })
+  }
+}
+
+export async function GET(req: NextRequest) {
+  try {
+    const sessionId = req.nextUrl.searchParams.get("session_id")
+
+    if (!sessionId) {
+      return NextResponse.json({ error: "Session ID is required" }, { status: 400 })
+    }
+
+    const session = await stripe.checkout.sessions.retrieve(sessionId)
+
+    return NextResponse.json({
+      status: session.payment_status,
+      customerEmail: session.customer_details?.email,
+      metadata: session.metadata,
+    })
+  } catch (error) {
+    console.error("Error retrieving checkout session:", error)
+    return NextResponse.json({ error: "Error retrieving checkout session" }, { status: 500 })
+  }
+}
