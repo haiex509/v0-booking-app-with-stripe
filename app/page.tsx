@@ -44,8 +44,8 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container py-12 space-y-16">
+    <div className="min-h-screen bg-background ">
+      <div className="container py-12 space-y-16  mx-auto">
         <div className="text-center space-y-3 max-w-2xl mx-auto">
           <h1 className="text-5xl font-bold tracking-tight text-foreground">Production Packages</h1>
           <p className="text-lg text-muted-foreground">Choose your package and book your session</p>
