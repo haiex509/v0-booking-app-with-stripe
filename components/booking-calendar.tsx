@@ -90,7 +90,7 @@ export function BookingCalendar({ onSelectSlot, serviceName = "Service", price =
             selected={selectedDate}
             onSelect={setSelectedDate}
             disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-            className="rounded-md border"
+            className="rounded-md border w-full"
           />
         </CardContent>
       </Card>
