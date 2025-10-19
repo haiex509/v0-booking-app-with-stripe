@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Calendar, Clock, DollarSign, Loader2 } from "lucide-react"
-import getStripe from "@/lib/stripe"
 
 function CheckoutForm() {
   const searchParams = useSearchParams()
@@ -56,11 +55,13 @@ function CheckoutForm() {
         body: JSON.stringify({ bookingData }),
       })
 
-      const { sessionId } = await response.json()
+      const { url } = await response.json()
 
-      // Redirect to Stripe checkout
-      const stripe = await getStripe()
-      await stripe?.redirectToCheckout({ sessionId })
+      if (url) {
+        window.location.href = url
+      } else {
+        throw new Error("No checkout URL received")
+      }
     } catch (error) {
       console.error("Error:", error)
       alert("Something went wrong. Please try again.")
