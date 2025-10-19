@@ -65,12 +65,15 @@ export function BookingDialog({ open, onOpenChange, packageData }: BookingDialog
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          amount: packageData.price * 100,
-          customerName: formData.name,
-          customerEmail: formData.email,
-          serviceName: packageData.name,
-          bookingDate: dateStr,
-          bookingTime: selectedTime.time,
+          bookingData: {
+            serviceName: packageData.name,
+            price: packageData.price,
+            date: dateStr,
+            time: selectedTime.time,
+            customerName: formData.name,
+            customerEmail: formData.email,
+            customerPhone: formData.phone,
+          },
         }),
       })
 
