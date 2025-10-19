@@ -23,8 +23,9 @@ export interface Booking {
   customerEmail: string
   serviceName: string
   price: number
-  status: "pending" | "confirmed" | "cancelled"
+  status?: "pending" | "confirmed" | "cancelled" | "refunded" // Added optional status with refunded option
   createdAt: string
+  paymentIntentId?: string // Added optional payment intent ID for refunds
 }
 
 interface BookingCalendarProps {

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Check } from "lucide-react"
 import { BookingDialog } from "@/components/booking-dialog"
+import Link from "next/link" // Added Link import for admin navigation
 
 const packages = [
   {
@@ -45,6 +46,20 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background ">
+      <div className="border-b border-border">
+        <div className="container mx-auto px-5 py-4 flex justify-end">
+          <Link href="/admin">
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-border text-foreground hover:bg-foreground/10 bg-transparent"
+            >
+              Admin Dashboard
+            </Button>
+          </Link>
+        </div>
+      </div>
+
       <div className="container py-12 px-5 space-y-16  mx-auto">
         <div className="text-center space-y-3 max-w-2xl mx-auto">
           <h1 className="text-5xl font-bold tracking-tight text-foreground">Production Packages</h1>
