@@ -1,108 +1,110 @@
 "use client"
 
-import { useRouter } from "next/navigation"
-import { BookingCalendar, type TimeSlot } from "@/components/booking-calendar"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { CalendarDays, CreditCard, CheckCircle } from "lucide-react"
+import { useState } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Check } from "lucide-react"
+import { BookingDialog } from "@/components/booking-dialog"
+
+const packages = [
+  {
+    id: "indie",
+    name: "Indie",
+    price: 399,
+    features: ["1 hr studio rental", "20 cinematic edits", "1 look/1 backdrop", "Online gallery"],
+  },
+  {
+    id: "feature",
+    name: "Feature",
+    price: 799,
+    popular: true,
+    features: [
+      "3 hr production",
+      "60 final stills",
+      "2 looks + set changes",
+      "Color-graded gallery",
+      "MUA & stylist included",
+    ],
+  },
+  {
+    id: "blockbuster",
+    name: "Blockbuster",
+    price: 1499,
+    features: ["Full-day shoot", "120+ hero images", "Unlimited sets", "Behind-the-scenes 4K video", "Same-day teaser"],
+  },
+]
 
 export default function Home() {
-  const router = useRouter()
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [selectedPackage, setSelectedPackage] = useState<(typeof packages)[0] | null>(null)
 
-  const handleSlotSelect = (date: Date, timeSlot: TimeSlot) => {
-    const dateStr = date.toISOString().split("T")[0]
-    const params = new URLSearchParams({
-      date: dateStr,
-      time: timeSlot.time,
-      service: "Professional Service",
-      price: "50",
-    })
-
-    router.push(`/booking/checkout?${params.toString()}`)
+  const handleSelectPackage = (pkg: (typeof packages)[0]) => {
+    setSelectedPackage(pkg)
+    setDialogOpen(true)
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
-      <div className="container py-8 space-y-8">
-        {/* Header */}
-        <div className="text-center space-y-4">
-          <h1 className="text-4xl font-bold tracking-tight">Book Your Appointment</h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Select your preferred date and time slot. Payment is processed securely through Stripe.
-          </p>
+    <div className="min-h-screen bg-background">
+      <div className="container py-12 space-y-16">
+        <div className="text-center space-y-3 max-w-2xl mx-auto">
+          <h1 className="text-5xl font-bold tracking-tight text-foreground">Production Packages</h1>
+          <p className="text-lg text-muted-foreground">Choose your package and book your session</p>
         </div>
 
-        {/* How it works */}
-        <div className="grid gap-4 md:grid-cols-3 max-w-4xl mx-auto">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                  <CalendarDays className="h-5 w-5 text-primary" />
+        <div className="grid gap-8 md:grid-cols-3 max-w-6xl mx-auto">
+          {packages.map((pkg) => (
+            <Card
+              key={pkg.id}
+              className={`relative transition-all hover:shadow-xl ${
+                pkg.popular ? "border-2 border-primary" : "border border-border"
+              }`}
+              onClick={() => handleSelectPackage(pkg)}
+            >
+              {pkg.popular && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <span className="bg-primary text-primary-foreground text-xs font-semibold px-3 py-1 rounded-full">
+                    Popular
+                  </span>
                 </div>
-                <div>
-                  <CardTitle className="text-base">1. Choose Date & Time</CardTitle>
+              )}
+              <CardHeader className="text-center pb-6">
+                <CardTitle className="text-2xl text-foreground">{pkg.name}</CardTitle>
+                <div className="mt-4">
+                  <span className="text-5xl font-bold text-primary">${pkg.price}</span>
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <CardDescription>Select your preferred date and available time slot from the calendar</CardDescription>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                  <CreditCard className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <CardTitle className="text-base">2. Enter Details & Pay</CardTitle>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <CardDescription>Provide your contact information and complete secure payment</CardDescription>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                  <CheckCircle className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <CardTitle className="text-base">3. Get Confirmation</CardTitle>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <CardDescription>Receive instant confirmation and booking details via email</CardDescription>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Service Info */}
-        <Card className="max-w-4xl mx-auto">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Professional Service</CardTitle>
-                <CardDescription>60-minute session with our expert team</CardDescription>
-              </div>
-              <Badge variant="secondary" className="text-lg px-4 py-2">
-                $50
-              </Badge>
-            </div>
-          </CardHeader>
-        </Card>
-
-        {/* Booking Calendar */}
-        <div className="max-w-6xl mx-auto">
-          <BookingCalendar onSelectSlot={handleSlotSelect} serviceName="Professional Service" price={50} />
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <ul className="space-y-3">
+                  {pkg.features.map((feature, i) => (
+                    <li key={i} className="flex items-start gap-3">
+                      <Check className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
+                      <span className="text-sm text-foreground">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Button
+                  variant={pkg.popular ? "destructive" : "outline"}
+                  className={`w-full mt-4 ${
+                    pkg.popular
+                      ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      : "border-foreground text-foreground hover:bg-foreground/10"
+                  }`}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleSelectPackage(pkg)
+                  }}
+                >
+                  Select
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       </div>
+
+      {selectedPackage && (
+        <BookingDialog open={dialogOpen} onOpenChange={setDialogOpen} packageData={selectedPackage} />
+      )}
     </div>
   )
 }

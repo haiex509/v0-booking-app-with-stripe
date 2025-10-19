@@ -103,7 +103,7 @@ export function BookingCalendar({ onSelectSlot, serviceName = "Service", price =
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-2">
+          <div className="grid lg:grid-cols-2 gap-2">
             {timeSlots.length > 0 ? (
               timeSlots.map((slot) => (
                 <Button
