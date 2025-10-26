@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Clock, Users } from "lucide-react"
+import { appwriteStorage } from "@/lib/appwrite-storage"
 
 export interface TimeSlot {
   id: string
@@ -38,23 +39,24 @@ export function BookingCalendar({ onSelectSlot, serviceName = "Service", price =
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([])
   const [bookings, setBookings] = useState<Booking[]>([])
+  const [loading, setLoading] = useState(true)
 
-  // Load bookings from localStorage
   useEffect(() => {
-    const stored = localStorage.getItem("bookings")
-    if (stored) {
-      setBookings(JSON.parse(stored))
+    const loadBookings = async () => {
+      setLoading(true)
+      const data = await appwriteStorage.getAll()
+      setBookings(data)
+      setLoading(false)
     }
+    loadBookings()
   }, [])
 
-  // Generate time slots for selected date
   useEffect(() => {
     if (!selectedDate) return
 
     const dateStr = selectedDate.toISOString().split("T")[0]
     const dayBookings = bookings.filter((b) => b.date === dateStr && b.status !== "cancelled")
 
-    // Generate slots from 9 AM to 5 PM
     const slots: TimeSlot[] = []
     for (let hour = 9; hour < 17; hour++) {
       const time = `${hour.toString().padStart(2, "0")}:00`
@@ -63,7 +65,7 @@ export function BookingCalendar({ onSelectSlot, serviceName = "Service", price =
       slots.push({
         id: `${dateStr}-${time}`,
         time,
-        available: slotBookings.length < 3, // Max 3 bookings per slot
+        available: slotBookings.length < 3,
         maxCapacity: 3,
         currentBookings: slotBookings.length,
       })
@@ -105,7 +107,9 @@ export function BookingCalendar({ onSelectSlot, serviceName = "Service", price =
         </CardHeader>
         <CardContent>
           <div className="grid lg:grid-cols-2 gap-2">
-            {timeSlots.length > 0 ? (
+            {loading ? (
+              <p className="text-center text-sm text-muted-foreground py-8">Loading...</p>
+            ) : timeSlots.length > 0 ? (
               timeSlots.map((slot) => (
                 <Button
                   key={slot.id}

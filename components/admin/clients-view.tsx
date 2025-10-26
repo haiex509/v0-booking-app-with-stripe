@@ -1,12 +1,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { bookingStorage } from "@/lib/booking-storage"
+import { appwriteStorage } from "@/lib/appwrite-storage"
 import type { Booking } from "@/components/booking-calendar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Search } from "lucide-react"
+import { Search, Loader2 } from "lucide-react"
 
 interface ClientData {
   email: string
@@ -19,15 +19,16 @@ interface ClientData {
 export function ClientsView() {
   const [clients, setClients] = useState<ClientData[]>([])
   const [searchQuery, setSearchQuery] = useState("")
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     loadClients()
   }, [])
 
-  const loadClients = () => {
-    const allBookings = bookingStorage.getAll()
+  const loadClients = async () => {
+    setLoading(true)
+    const allBookings = await appwriteStorage.getAll()
 
-    // Group bookings by customer email
     const clientMap = new Map<string, ClientData>()
 
     allBookings.forEach((booking) => {
@@ -45,21 +46,19 @@ export function ClientsView() {
       const client = clientMap.get(email)!
       client.bookings.push(booking)
 
-      // Only count non-refunded bookings in total spent
       if (booking.status !== "refunded") {
         client.totalSpent += booking.price || 0
       }
 
-      // Update last booking date
       if (new Date(booking.date) > new Date(client.lastBooking)) {
         client.lastBooking = booking.date
       }
     })
 
-    // Convert to array and sort by total spent
     const clientsArray = Array.from(clientMap.values()).sort((a, b) => b.totalSpent - a.totalSpent)
 
     setClients(clientsArray)
+    setLoading(false)
   }
 
   const filteredClients = clients.filter(
@@ -125,69 +124,75 @@ export function ClientsView() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {filteredClients.length === 0 ? (
-              <p className="text-center text-zinc-500 py-8">{searchQuery ? "No clients found" : "No clients yet"}</p>
-            ) : (
-              filteredClients.map((client) => (
-                <div key={client.email} className="p-4 rounded-lg bg-zinc-800/50 border border-zinc-700">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <h3 className="font-semibold text-white text-lg">{client.name}</h3>
-                      <p className="text-sm text-zinc-400">{client.email}</p>
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-gold" />
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredClients.length === 0 ? (
+                <p className="text-center text-zinc-500 py-8">{searchQuery ? "No clients found" : "No clients yet"}</p>
+              ) : (
+                filteredClients.map((client) => (
+                  <div key={client.email} className="p-4 rounded-lg bg-zinc-800/50 border border-zinc-700">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h3 className="font-semibold text-white text-lg">{client.name}</h3>
+                        <p className="text-sm text-zinc-400">{client.email}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xl font-bold text-gold">{formatCurrency(client.totalSpent)}</p>
+                        <p className="text-xs text-zinc-500">Total Spent</p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-xl font-bold text-gold">{formatCurrency(client.totalSpent)}</p>
-                      <p className="text-xs text-zinc-500">Total Spent</p>
-                    </div>
-                  </div>
 
-                  <div className="flex items-center gap-4 text-sm text-zinc-400 mb-3">
-                    <div>
-                      <span className="text-zinc-500">Bookings:</span>{" "}
-                      <span className="text-white font-medium">{client.bookings.length}</span>
+                    <div className="flex items-center gap-4 text-sm text-zinc-400 mb-3">
+                      <div>
+                        <span className="text-zinc-500">Bookings:</span>{" "}
+                        <span className="text-white font-medium">{client.bookings.length}</span>
+                      </div>
+                      <div>
+                        <span className="text-zinc-500">Last Booking:</span>{" "}
+                        <span className="text-white">{formatDate(client.lastBooking)}</span>
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-zinc-500">Last Booking:</span>{" "}
-                      <span className="text-white">{formatDate(client.lastBooking)}</span>
-                    </div>
-                  </div>
 
-                  <div className="space-y-2">
-                    <p className="text-xs text-zinc-500 font-medium uppercase tracking-wide">Booking History</p>
                     <div className="space-y-2">
-                      {client.bookings.map((booking) => (
-                        <div
-                          key={booking.id}
-                          className="flex items-center justify-between text-sm p-2 rounded bg-zinc-900/50"
-                        >
-                          <div className="flex items-center gap-2">
-                            <Badge
-                              variant="outline"
-                              className={
-                                booking.status === "refunded"
-                                  ? "bg-blue-500/10 text-blue-400 border-blue-500/20"
-                                  : booking.status === "cancelled"
-                                    ? "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"
-                                    : "bg-green-500/10 text-green-500 border-green-500/20"
-                              }
-                            >
-                              {booking.status || "confirmed"}
-                            </Badge>
-                            <span className="text-zinc-300">{booking.serviceName}</span>
+                      <p className="text-xs text-zinc-500 font-medium uppercase tracking-wide">Booking History</p>
+                      <div className="space-y-2">
+                        {client.bookings.map((booking) => (
+                          <div
+                            key={booking.id}
+                            className="flex items-center justify-between text-sm p-2 rounded bg-zinc-900/50"
+                          >
+                            <div className="flex items-center gap-2">
+                              <Badge
+                                variant="outline"
+                                className={
+                                  booking.status === "refunded"
+                                    ? "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                                    : booking.status === "cancelled"
+                                      ? "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"
+                                      : "bg-green-500/10 text-green-500 border-green-500/20"
+                                }
+                              >
+                                {booking.status || "confirmed"}
+                              </Badge>
+                              <span className="text-zinc-300">{booking.serviceName}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="text-zinc-500">{formatDate(booking.date)}</span>
+                              <span className="text-gold font-medium">{formatCurrency(booking.price || 0)}</span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <span className="text-zinc-500">{formatDate(booking.date)}</span>
-                            <span className="text-gold font-medium">{formatCurrency(booking.price || 0)}</span>
-                          </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
-            )}
-          </div>
+                ))
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

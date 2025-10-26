@@ -98,6 +98,9 @@ importers:
       '@vercel/analytics':
         specifier: latest
         version: 1.5.0(next@15.2.4(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)
+      appwrite:
+        specifier: latest
+        version: 21.2.1
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.0)
@@ -128,6 +131,9 @@ importers:
       next-themes:
         specifier: latest
         version: 0.4.6(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      node-appwrite:
+        specifier: latest
+        version: 20.2.1
       react:
         specifier: ^19
         version: 19.0.0
@@ -1219,6 +1225,9 @@ packages:
       vue-router:
         optional: true
 
+  appwrite@21.2.1:
+    resolution: {integrity: sha512-OKC95Obw/VuruLf/XqURXHe/6uyQ8/ORpu/GEJC3MrPmwevElFFkE890LmYaolelKYYDPslFnHwgwAn+K3YgqA==}
+
   aria-hidden@1.2.6:
     resolution: {integrity: sha512-ik3ZgC9dY/lYVVM++OISsaYDeg1tb0VtP5uL3ouh1koGOaUMDPpbFIei4JkFimWUFPn90sbMNMXQAIVOlnYKJA==}
     engines: {node: '>=10'}
@@ -1576,6 +1585,12 @@ packages:
         optional: true
       sass:
         optional: true
+
+  node-appwrite@20.2.1:
+    resolution: {integrity: sha512-RweIh+3RHjprsxhWaJzcQr/UDMBMsZCma50TIJ9t3onVgs5jAT9aqFnsMlaaC9QZn1sXpPUQV90W6uvtm64DnQ==}
+
+  node-fetch-native-with-agent@1.7.2:
+    resolution: {integrity: sha512-5MaOOCuJEvcckoz7/tjdx1M6OusOY6Xc5f459IaruGStWnKzlI1qpNgaAwmn4LmFYcsSlj+jBMk84wmmRxfk5g==}
 
   node-releases@2.0.25:
     resolution: {integrity: sha512-4auku8B/vw5psvTiiN9j1dAOsXvMoGqJuKJcR+dTdqiXEK20mMTk1UEo3HS16LeGQsVG6+qKTPM9u/qQ2LqATA==}
@@ -2819,6 +2834,8 @@ snapshots:
       next: 15.2.4(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       react: 19.0.0
 
+  appwrite@21.2.1: {}
+
   aria-hidden@1.2.6:
     dependencies:
       tslib: 2.8.1
@@ -3141,6 +3158,12 @@ snapshots:
     transitivePeerDependencies:
       - '@babel/core'
       - babel-plugin-macros
+
+  node-appwrite@20.2.1:
+    dependencies:
+      node-fetch-native-with-agent: 1.7.2
+
+  node-fetch-native-with-agent@1.7.2: {}
 
   node-releases@2.0.25: {}
 

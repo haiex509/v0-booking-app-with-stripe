@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { CheckCircle2, Loader2 } from "lucide-react"
-import { bookingStorage } from "@/lib/booking-storage"
+import { appwriteStorage } from "@/lib/appwrite-storage"
 import type { Booking } from "@/components/booking-calendar"
 
 function SuccessContent() {
@@ -22,7 +22,6 @@ function SuccessContent() {
       return
     }
 
-    // Verify payment and save booking
     const verifyPayment = async () => {
       try {
         const response = await fetch(`/api/stripe/checkout?session_id=${sessionId}`)
@@ -31,23 +30,23 @@ function SuccessContent() {
         if (data.status === "paid") {
           const bookingData = JSON.parse(data.metadata.bookingData)
 
-          const newBooking: Booking = {
-            id: crypto.randomUUID(),
+          const newBooking = {
             date: bookingData.date,
             time: bookingData.time,
             customerName: bookingData.customerName,
             customerEmail: bookingData.customerEmail,
             serviceName: bookingData.serviceName,
             price: bookingData.price,
-            status: "confirmed",
+            status: "confirmed" as const,
             createdAt: new Date().toISOString(),
+            paymentIntentId: data.payment_intent,
           }
 
-          bookingStorage.save(newBooking)
-          setBooking(newBooking)
+          const savedBooking = await appwriteStorage.save(newBooking)
+          setBooking(savedBooking)
         }
       } catch (error) {
-        console.error("Error verifying payment:", error)
+        console.error("[v0] Error verifying payment:", error)
       } finally {
         setLoading(false)
       }
