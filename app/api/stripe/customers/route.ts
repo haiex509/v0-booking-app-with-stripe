@@ -7,16 +7,28 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function GET(req: NextRequest) {
   try {
+    console.log("[v0] Fetching payment intents for customers...")
+
     // Fetch all payment intents
     const paymentIntents = await stripe.paymentIntents.list({
       limit: 100,
       expand: ["data.charges"],
     })
 
+    if (!paymentIntents || !paymentIntents.data) {
+      console.error("[v0] Invalid payment intents response:", paymentIntents)
+      return NextResponse.json({ clients: [] })
+    }
+
     // Fetch all checkout sessions to get metadata
     const sessions = await stripe.checkout.sessions.list({
       limit: 100,
     })
+
+    if (!sessions || !sessions.data) {
+      console.error("[v0] Invalid sessions response:", sessions)
+      return NextResponse.json({ clients: [] })
+    }
 
     // Create a map of payment intent ID to session metadata
     const sessionMap = new Map()
@@ -42,14 +54,14 @@ export async function GET(req: NextRequest) {
       }
 
       const email =
-        bookingData.customerEmail || pi.charges.data[0]?.billing_details?.email || session?.customer_details?.email
+        bookingData.customerEmail || pi.charges?.data?.[0]?.billing_details?.email || session?.customer_details?.email
 
       if (!email || email === "N/A") return
 
       if (!clientMap.has(email)) {
         clientMap.set(email, {
           email,
-          name: bookingData.customerName || pi.charges.data[0]?.billing_details?.name || "Unknown",
+          name: bookingData.customerName || pi.charges?.data?.[0]?.billing_details?.name || "Unknown",
           bookings: [],
           totalSpent: 0,
           lastBooking: new Date(pi.created * 1000).toISOString().split("T")[0],
@@ -62,7 +74,7 @@ export async function GET(req: NextRequest) {
       let status = "confirmed"
       if (pi.status === "canceled") {
         status = "cancelled"
-      } else if (pi.charges.data[0]?.refunded) {
+      } else if (pi.charges?.data?.[0]?.refunded) {
         status = "refunded"
       }
 
@@ -93,9 +105,10 @@ export async function GET(req: NextRequest) {
     // Convert to array and sort by total spent
     const clients = Array.from(clientMap.values()).sort((a, b) => b.totalSpent - a.totalSpent)
 
+    console.log("[v0] Returning", clients.length, "clients")
     return NextResponse.json({ clients })
   } catch (error) {
     console.error("Error fetching customers from Stripe:", error)
-    return NextResponse.json({ error: "Error fetching customers" }, { status: 500 })
+    return NextResponse.json({ clients: [], error: "Error fetching customers" }, { status: 500 })
   }
 }

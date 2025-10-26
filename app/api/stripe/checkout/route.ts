@@ -9,6 +9,13 @@ export async function POST(req: NextRequest) {
   try {
     const { bookingData } = await req.json()
 
+    const origin = req.headers.get("origin") || req.headers.get("referer")?.split("/").slice(0, 3).join("/")
+
+    // Fallback to constructing URL from host header if origin is not available
+    const baseUrl = origin || `https://${req.headers.get("host")}`
+
+    console.log("[v0] Creating checkout session with baseUrl:", baseUrl)
+
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: [
@@ -25,8 +32,8 @@ export async function POST(req: NextRequest) {
         },
       ],
       mode: "payment",
-      success_url: `${req.headers.get("origin")}/booking/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.headers.get("origin")}/booking/cancel`,
+      success_url: `${baseUrl}/booking/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/booking/cancel`,
       metadata: {
         bookingData: JSON.stringify(bookingData),
       },
