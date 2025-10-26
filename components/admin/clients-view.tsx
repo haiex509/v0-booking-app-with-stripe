@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { appwriteStorage } from "@/lib/appwrite-storage"
 import type { Booking } from "@/components/booking-calendar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -27,38 +26,15 @@ export function ClientsView() {
 
   const loadClients = async () => {
     setLoading(true)
-    const allBookings = await appwriteStorage.getAll()
-
-    const clientMap = new Map<string, ClientData>()
-
-    allBookings.forEach((booking) => {
-      const email = booking.customerEmail
-      if (!clientMap.has(email)) {
-        clientMap.set(email, {
-          email,
-          name: booking.customerName,
-          bookings: [],
-          totalSpent: 0,
-          lastBooking: booking.date,
-        })
-      }
-
-      const client = clientMap.get(email)!
-      client.bookings.push(booking)
-
-      if (booking.status !== "refunded") {
-        client.totalSpent += booking.price || 0
-      }
-
-      if (new Date(booking.date) > new Date(client.lastBooking)) {
-        client.lastBooking = booking.date
-      }
-    })
-
-    const clientsArray = Array.from(clientMap.values()).sort((a, b) => b.totalSpent - a.totalSpent)
-
-    setClients(clientsArray)
-    setLoading(false)
+    try {
+      const response = await fetch("/api/stripe/customers")
+      const data = await response.json()
+      setClients(data.clients || [])
+    } catch (error) {
+      console.error("Error loading clients:", error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const filteredClients = clients.filter(
@@ -80,6 +56,14 @@ export function ClientsView() {
       day: "numeric",
       year: "numeric",
     })
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-gold" />
+      </div>
+    )
   }
 
   return (
@@ -112,7 +96,9 @@ export function ClientsView() {
       <Card className="bg-zinc-900 border-zinc-800">
         <CardHeader>
           <CardTitle className="text-white">All Clients</CardTitle>
-          <CardDescription className="text-zinc-400">View client information and booking history</CardDescription>
+          <CardDescription className="text-zinc-400">
+            View client information and booking history from Stripe
+          </CardDescription>
           <div className="relative mt-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
             <Input
@@ -124,75 +110,69 @@ export function ClientsView() {
           </div>
         </CardHeader>
         <CardContent>
-          {loading ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-gold" />
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredClients.length === 0 ? (
-                <p className="text-center text-zinc-500 py-8">{searchQuery ? "No clients found" : "No clients yet"}</p>
-              ) : (
-                filteredClients.map((client) => (
-                  <div key={client.email} className="p-4 rounded-lg bg-zinc-800/50 border border-zinc-700">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h3 className="font-semibold text-white text-lg">{client.name}</h3>
-                        <p className="text-sm text-zinc-400">{client.email}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xl font-bold text-gold">{formatCurrency(client.totalSpent)}</p>
-                        <p className="text-xs text-zinc-500">Total Spent</p>
-                      </div>
+          <div className="space-y-4">
+            {filteredClients.length === 0 ? (
+              <p className="text-center text-zinc-500 py-8">{searchQuery ? "No clients found" : "No clients yet"}</p>
+            ) : (
+              filteredClients.map((client) => (
+                <div key={client.email} className="p-4 rounded-lg bg-zinc-800/50 border border-zinc-700">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <h3 className="font-semibold text-white text-lg">{client.name}</h3>
+                      <p className="text-sm text-zinc-400">{client.email}</p>
                     </div>
-
-                    <div className="flex items-center gap-4 text-sm text-zinc-400 mb-3">
-                      <div>
-                        <span className="text-zinc-500">Bookings:</span>{" "}
-                        <span className="text-white font-medium">{client.bookings.length}</span>
-                      </div>
-                      <div>
-                        <span className="text-zinc-500">Last Booking:</span>{" "}
-                        <span className="text-white">{formatDate(client.lastBooking)}</span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <p className="text-xs text-zinc-500 font-medium uppercase tracking-wide">Booking History</p>
-                      <div className="space-y-2">
-                        {client.bookings.map((booking) => (
-                          <div
-                            key={booking.id}
-                            className="flex items-center justify-between text-sm p-2 rounded bg-zinc-900/50"
-                          >
-                            <div className="flex items-center gap-2">
-                              <Badge
-                                variant="outline"
-                                className={
-                                  booking.status === "refunded"
-                                    ? "bg-blue-500/10 text-blue-400 border-blue-500/20"
-                                    : booking.status === "cancelled"
-                                      ? "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"
-                                      : "bg-green-500/10 text-green-500 border-green-500/20"
-                                }
-                              >
-                                {booking.status || "confirmed"}
-                              </Badge>
-                              <span className="text-zinc-300">{booking.serviceName}</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <span className="text-zinc-500">{formatDate(booking.date)}</span>
-                              <span className="text-gold font-medium">{formatCurrency(booking.price || 0)}</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                    <div className="text-right">
+                      <p className="text-xl font-bold text-gold">{formatCurrency(client.totalSpent)}</p>
+                      <p className="text-xs text-zinc-500">Total Spent</p>
                     </div>
                   </div>
-                ))
-              )}
-            </div>
-          )}
+
+                  <div className="flex items-center gap-4 text-sm text-zinc-400 mb-3">
+                    <div>
+                      <span className="text-zinc-500">Bookings:</span>{" "}
+                      <span className="text-white font-medium">{client.bookings.length}</span>
+                    </div>
+                    <div>
+                      <span className="text-zinc-500">Last Booking:</span>{" "}
+                      <span className="text-white">{formatDate(client.lastBooking)}</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-xs text-zinc-500 font-medium uppercase tracking-wide">Booking History</p>
+                    <div className="space-y-2">
+                      {client.bookings.map((booking) => (
+                        <div
+                          key={booking.id}
+                          className="flex items-center justify-between text-sm p-2 rounded bg-zinc-900/50"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              variant="outline"
+                              className={
+                                booking.status === "refunded"
+                                  ? "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                                  : booking.status === "cancelled"
+                                    ? "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"
+                                    : "bg-green-500/10 text-green-500 border-green-500/20"
+                              }
+                            >
+                              {booking.status || "confirmed"}
+                            </Badge>
+                            <span className="text-zinc-300">{booking.serviceName}</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-zinc-500">{formatDate(booking.date)}</span>
+                            <span className="text-gold font-medium">{formatCurrency(booking.price || 0)}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

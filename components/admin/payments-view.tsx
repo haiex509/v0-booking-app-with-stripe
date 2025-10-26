@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { appwriteStorage } from "@/lib/appwrite-storage"
 import type { Booking } from "@/components/booking-calendar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -31,14 +30,15 @@ export function PaymentsView() {
 
   const loadBookings = async () => {
     setLoading(true)
-    const allBookings = await appwriteStorage.getAll()
-    const sorted = allBookings.sort((a, b) => {
-      const dateA = new Date(a.date + " " + a.time)
-      const dateB = new Date(b.date + " " + b.time)
-      return dateB.getTime() - dateA.getTime()
-    })
-    setBookings(sorted)
-    setLoading(false)
+    try {
+      const response = await fetch("/api/stripe/payments")
+      const data = await response.json()
+      setBookings(data.bookings || [])
+    } catch (error) {
+      console.error("Error loading bookings:", error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleRefundClick = (booking: Booking) => {
@@ -62,26 +62,18 @@ export function PaymentsView() {
       const data = await response.json()
 
       if (data.success) {
-        await appwriteStorage.update(selectedBooking.id, { status: "refunded" })
-        loadBookings()
+        await loadBookings()
         alert("Refund processed successfully!")
       } else {
         alert("Failed to process refund: " + data.error)
       }
     } catch (error) {
-      console.error("[v0] Refund error:", error)
+      console.error("Refund error:", error)
       alert("Failed to process refund")
     } finally {
       setIsRefunding(false)
       setShowRefundDialog(false)
       setSelectedBooking(null)
-    }
-  }
-
-  const handleCancel = async (booking: Booking) => {
-    if (confirm(`Are you sure you want to cancel this booking for ${booking.customerName}?`)) {
-      await appwriteStorage.update(booking.id, { status: "cancelled" })
-      loadBookings()
     }
   }
 
@@ -103,6 +95,14 @@ export function PaymentsView() {
       style: "currency",
       currency: "USD",
     }).format(amount)
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-gold" />
+      </div>
+    )
   }
 
   return (
@@ -137,79 +137,61 @@ export function PaymentsView() {
       <Card className="bg-zinc-900 border-zinc-800">
         <CardHeader>
           <CardTitle className="text-white">All Payments</CardTitle>
-          <CardDescription className="text-zinc-400">Manage bookings and process refunds</CardDescription>
+          <CardDescription className="text-zinc-400">Manage bookings and process refunds from Stripe</CardDescription>
         </CardHeader>
         <CardContent>
-          {loading ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-gold" />
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {bookings.length === 0 ? (
-                <p className="text-center text-zinc-500 py-8">No bookings found</p>
-              ) : (
-                bookings.map((booking) => (
-                  <div
-                    key={booking.id}
-                    className="flex items-center justify-between p-4 rounded-lg bg-zinc-800/50 border border-zinc-700"
-                  >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="font-semibold text-white">{booking.customerName}</h3>
-                        <Badge variant="outline" className={getStatusColor(booking.status)}>
-                          {booking.status || "confirmed"}
-                        </Badge>
-                      </div>
-                      <div className="text-sm text-zinc-400 space-y-1">
-                        <p>
-                          <span className="text-zinc-500">Package:</span> {booking.serviceName}
-                        </p>
-                        <p>
-                          <span className="text-zinc-500">Date:</span> {booking.date} at {booking.time}
-                        </p>
-                        <p>
-                          <span className="text-zinc-500">Email:</span> {booking.customerEmail}
-                        </p>
-                        {booking.paymentIntentId && (
-                          <p className="text-xs font-mono">
-                            <span className="text-zinc-500">Payment ID:</span> {booking.paymentIntentId}
-                          </p>
-                        )}
-                      </div>
+          <div className="space-y-4">
+            {bookings.length === 0 ? (
+              <p className="text-center text-zinc-500 py-8">No bookings found</p>
+            ) : (
+              bookings.map((booking) => (
+                <div
+                  key={booking.id}
+                  className="flex items-center justify-between p-4 rounded-lg bg-zinc-800/50 border border-zinc-700"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="font-semibold text-white">{booking.customerName}</h3>
+                      <Badge variant="outline" className={getStatusColor(booking.status)}>
+                        {booking.status || "confirmed"}
+                      </Badge>
                     </div>
-                    <div className="flex flex-col items-end gap-2">
-                      <p className="text-xl font-bold text-gold">{formatCurrency(booking.price || 0)}</p>
-                      <div className="flex gap-2">
-                        {booking.status !== "cancelled" && booking.status !== "refunded" && (
-                          <>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleCancel(booking)}
-                              className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
-                            >
-                              Cancel
-                            </Button>
-                            {booking.paymentIntentId && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleRefundClick(booking)}
-                                className="border-red-500/20 text-red-400 hover:bg-red-500/10"
-                              >
-                                Refund
-                              </Button>
-                            )}
-                          </>
-                        )}
-                      </div>
+                    <div className="text-sm text-zinc-400 space-y-1">
+                      <p>
+                        <span className="text-zinc-500">Package:</span> {booking.serviceName}
+                      </p>
+                      <p>
+                        <span className="text-zinc-500">Date:</span> {booking.date} at {booking.time}
+                      </p>
+                      <p>
+                        <span className="text-zinc-500">Email:</span> {booking.customerEmail}
+                      </p>
+                      {booking.paymentIntentId && (
+                        <p className="text-xs font-mono">
+                          <span className="text-zinc-500">Payment ID:</span> {booking.paymentIntentId}
+                        </p>
+                      )}
                     </div>
                   </div>
-                ))
-              )}
-            </div>
-          )}
+                  <div className="flex flex-col items-end gap-2">
+                    <p className="text-xl font-bold text-gold">{formatCurrency(booking.price || 0)}</p>
+                    <div className="flex gap-2">
+                      {booking.status !== "refunded" && booking.paymentIntentId && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleRefundClick(booking)}
+                          className="border-red-500/20 text-red-400 hover:bg-red-500/10"
+                        >
+                          Refund
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </CardContent>
       </Card>
 
