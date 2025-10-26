@@ -106,7 +106,7 @@ export function BookingDialog({ open, onOpenChange, packageData }: BookingDialog
         if (!open) resetDialog()
       }}
     >
-      <DialogContent className="min-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="lg:min-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {step === "datetime" && "Select Your Date & Time"}
