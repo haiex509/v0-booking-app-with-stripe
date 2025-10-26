@@ -5,7 +5,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Clock, Users } from "lucide-react"
+import { Clock, Users, Loader2 } from "lucide-react"
 
 export interface TimeSlot {
   id: string
@@ -38,13 +38,36 @@ export function BookingCalendar({ onSelectSlot, serviceName = "Service", price =
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([])
   const [bookings, setBookings] = useState<Booking[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  // Load bookings from localStorage
   useEffect(() => {
-    const stored = localStorage.getItem("bookings")
-    if (stored) {
-      setBookings(JSON.parse(stored))
+    const fetchBookings = async () => {
+      setIsLoading(true)
+      try {
+        const response = await fetch("/api/stripe/payments")
+        const data = await response.json()
+
+        if (data.bookings) {
+          // Only include confirmed bookings (exclude cancelled and refunded)
+          const confirmedBookings = data.bookings.filter(
+            (b: Booking) => b.status === "confirmed" || b.status === "pending",
+          )
+          setBookings(confirmedBookings)
+          console.log("[v0] Loaded", confirmedBookings.length, "confirmed bookings from Stripe")
+        }
+      } catch (error) {
+        console.error("[v0] Error fetching bookings:", error)
+        // Fallback to localStorage if API fails
+        const stored = localStorage.getItem("bookings")
+        if (stored) {
+          setBookings(JSON.parse(stored))
+        }
+      } finally {
+        setIsLoading(false)
+      }
     }
+
+    fetchBookings()
   }, [])
 
   // Generate time slots for selected date
@@ -52,7 +75,9 @@ export function BookingCalendar({ onSelectSlot, serviceName = "Service", price =
     if (!selectedDate) return
 
     const dateStr = selectedDate.toISOString().split("T")[0]
-    const dayBookings = bookings.filter((b) => b.date === dateStr && b.status !== "cancelled")
+    const dayBookings = bookings.filter(
+      (b) => b.date === dateStr && (b.status === "confirmed" || b.status === "pending"),
+    )
 
     // Generate slots from 9 AM to 5 PM
     const slots: TimeSlot[] = []
@@ -104,30 +129,37 @@ export function BookingCalendar({ onSelectSlot, serviceName = "Service", price =
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid lg:grid-cols-2 gap-2">
-            {timeSlots.length > 0 ? (
-              timeSlots.map((slot) => (
-                <Button
-                  key={slot.id}
-                  variant={slot.available ? "outline" : "secondary"}
-                  disabled={!slot.available}
-                  onClick={() => handleSlotSelect(slot)}
-                  className="justify-between"
-                >
-                  <span className="flex items-center gap-2">
-                    <Clock className="h-4 w-4" />
-                    {slot.time}
-                  </span>
-                  <Badge variant={slot.available ? "default" : "secondary"}>
-                    <Users className="mr-1 h-3 w-3" />
-                    {slot.currentBookings}/{slot.maxCapacity}
-                  </Badge>
-                </Button>
-              ))
-            ) : (
-              <p className="text-center text-sm text-muted-foreground py-8">Select a date to view available slots</p>
-            )}
-          </div>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-sm text-muted-foreground">Loading available slots...</span>
+            </div>
+          ) : (
+            <div className="grid lg:grid-cols-2 gap-2">
+              {timeSlots.length > 0 ? (
+                timeSlots.map((slot) => (
+                  <Button
+                    key={slot.id}
+                    variant={slot.available ? "outline" : "secondary"}
+                    disabled={!slot.available}
+                    onClick={() => handleSlotSelect(slot)}
+                    className="justify-between"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      {slot.time}
+                    </span>
+                    <Badge variant={slot.available ? "default" : "secondary"}>
+                      <Users className="mr-1 h-3 w-3" />
+                      {slot.currentBookings}/{slot.maxCapacity}
+                    </Badge>
+                  </Button>
+                ))
+              ) : (
+                <p className="text-center text-sm text-muted-foreground py-8">Select a date to view available slots</p>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
