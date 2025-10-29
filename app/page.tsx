@@ -1,48 +1,71 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Check } from "lucide-react"
+import { Check, Loader2 } from "lucide-react"
 import { BookingDialog } from "@/components/booking-dialog"
-import Link from "next/link" // Added Link import for admin navigation
-
-const packages = [
-  {
-    id: "indie",
-    name: "Indie",
-    price: 399,
-    features: ["1 hr studio rental", "20 cinematic edits", "1 look/1 backdrop", "Online gallery"],
-  },
-  {
-    id: "feature",
-    name: "Feature",
-    price: 799,
-    popular: true,
-    features: [
-      "3 hr production",
-      "60 final stills",
-      "2 looks + set changes",
-      "Color-graded gallery",
-      "MUA & stylist included",
-    ],
-  },
-  {
-    id: "blockbuster",
-    name: "Blockbuster",
-    price: 1499,
-    features: ["Full-day shoot", "120+ hero images", "Unlimited sets", "Behind-the-scenes 4K video", "Same-day teaser"],
-  },
-]
+import Link from "next/link"
+import { getPackages, type Package } from "@/lib/package-storage"
 
 export default function Home() {
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [selectedPackage, setSelectedPackage] = useState<(typeof packages)[0] | null>(null)
+  const [selectedPackage, setSelectedPackage] = useState<Package | null>(null)
+  const [packages, setPackages] = useState<Package[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const handleSelectPackage = (pkg: (typeof packages)[0]) => {
+  useEffect(() => {
+    const loadPackages = () => {
+      const storedPackages = getPackages()
+      // Only show active packages on the public page
+      const activePackages = storedPackages.filter((pkg) => pkg.isActive)
+      setPackages(activePackages)
+      setLoading(false)
+    }
+    loadPackages()
+  }, [])
+  // </CHANGE>
+
+  const handleSelectPackage = (pkg: Package) => {
     setSelectedPackage(pkg)
     setDialogOpen(true)
   }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  // Show message if no packages available
+  if (packages.length === 0) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="border-b border-border">
+          <div className="container mx-auto px-5 py-4 flex justify-end">
+            <Link href="/admin">
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-border text-foreground hover:bg-foreground/10 bg-transparent"
+              >
+                Admin Dashboard
+              </Button>
+            </Link>
+          </div>
+        </div>
+        <div className="container py-12 px-5 flex items-center justify-center min-h-[60vh]">
+          <div className="text-center space-y-4">
+            <h2 className="text-2xl font-bold text-foreground">No Packages Available</h2>
+            <p className="text-muted-foreground">Please check back later or contact the administrator.</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+  // </CHANGE>
 
   return (
     <div className="min-h-screen bg-background ">
