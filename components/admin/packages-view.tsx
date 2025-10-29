@@ -17,7 +17,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { Pencil, Trash2, Plus, Star, Search, Filter } from "lucide-react"
-import { packageStorage, type ProductionPackage } from "@/lib/package-storage"
+import { packageStorage, type ProductionPackage } from "@/lib/local-storage"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 

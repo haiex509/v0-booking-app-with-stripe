@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Check, Loader2 } from "lucide-react"
 import { BookingDialog } from "@/components/booking-dialog"
 import Link from "next/link"
-import { getPackages, type Package } from "@/lib/package-storage"
+import { getPackages, type Package } from "@/lib/local-storage"
 
 export default function Home() {
   const [dialogOpen, setDialogOpen] = useState(false)

@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Lock } from "lucide-react"
-import { initializeAdminCode, verifyAdminCode } from "@/lib/admin-auth"
+import { initializeAdminCode, verifyAdminCode } from "@/lib/local-storage"
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("payments")
