@@ -12,7 +12,7 @@ import { ChangePasswordDialog } from "@/components/admin/change-password-dialog"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/hooks/use-auth"
 import { usePermissions } from "@/hooks/use-permissions"
-import { Loader2, Key } from "lucide-react"
+import { Loader2, Key,LogOut } from "lucide-react"
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("payments")
@@ -55,12 +55,14 @@ export default function AdminDashboard() {
             <p className="text-zinc-400 mt-2">Manage bookings, payments, and packages</p>
           </div>
           <div className="flex items-center gap-4">
+          <div>
             <span className="text-zinc-400 text-sm">{user.email}</span>
             {role && (
               <span className="text-xs px-2 py-1 rounded-full bg-gold/10 text-gold border border-gold/20">
                 {role.replace("_", " ").toUpperCase()}
               </span>
             )}
+            </div>
             <Button
               onClick={() => setShowPasswordDialog(true)}
               variant="outline"
@@ -68,14 +70,15 @@ export default function AdminDashboard() {
               className="border-zinc-700 text-zinc-400 hover:text-white hover:bg-zinc-800 bg-transparent"
             >
               <Key className="h-4 w-4 mr-2" />
-              Change Password
+            <span className="hidden lg:block">Change Password </span>
             </Button>
             <Button
               onClick={handleLogout}
               variant="outline"
               className="border-zinc-700 text-zinc-400 hover:text-white hover:bg-zinc-800 bg-transparent"
             >
-              Logout
+                <LogOut className="h-4 w-4 mr-2" />
+            <span className="hidden lg:block">Logout</span>
             </Button>
           </div>
         </div>
