@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { updateAdminCode, getDefaultCode } from "@/lib/local-storage"
+import { updateAdminCode, getDefaultCode } from "@/lib/admin-auth"
 import { Lock, Check, AlertCircle } from "lucide-react"
 
 export function SettingsView() {

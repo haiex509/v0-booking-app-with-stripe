@@ -7,13 +7,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PaymentsView } from "@/components/admin/payments-view"
 import { ClientsView } from "@/components/admin/clients-view"
 import { SettingsView } from "@/components/admin/settings-view"
-import { PackagesView } from "@/components/admin/packages-view"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Lock } from "lucide-react"
-import { initializeAdminCode, verifyAdminCode } from "@/lib/local-storage"
+import { initializeAdminCode, verifyAdminCode } from "@/lib/admin-auth"
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("payments")
@@ -28,6 +27,7 @@ export default function AdminDashboard() {
       setIsAuthenticated(true)
     }
   }, [])
+  // </CHANGE>
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault()
@@ -40,6 +40,7 @@ export default function AdminDashboard() {
       setError("Invalid access code")
       setCode("")
     }
+    // </CHANGE>
   }
 
   const handleLogout = () => {
@@ -48,6 +49,7 @@ export default function AdminDashboard() {
     setCode("")
   }
 
+  // Show login form if not authenticated
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center p-4">
@@ -113,12 +115,10 @@ export default function AdminDashboard() {
             <TabsTrigger value="clients" className="data-[state=active]:bg-zinc-800 data-[state=active]:text-gold">
               Clients
             </TabsTrigger>
-            <TabsTrigger value="packages" className="data-[state=active]:bg-zinc-800 data-[state=active]:text-gold">
-              Packages
-            </TabsTrigger>
             <TabsTrigger value="settings" className="data-[state=active]:bg-zinc-800 data-[state=active]:text-gold">
               Settings
             </TabsTrigger>
+            {/* </CHANGE> */}
           </TabsList>
 
           <TabsContent value="payments" className="mt-6">
@@ -129,13 +129,10 @@ export default function AdminDashboard() {
             <ClientsView />
           </TabsContent>
 
-          <TabsContent value="packages" className="mt-6">
-            <PackagesView />
-          </TabsContent>
-
           <TabsContent value="settings" className="mt-6">
             <SettingsView />
           </TabsContent>
+          {/* </CHANGE> */}
         </Tabs>
       </div>
     </div>

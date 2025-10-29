@@ -4,12 +4,9 @@ export interface ProductionPackage {
   price: number
   features: string[]
   popular?: boolean
-  isActive?: boolean
   createdAt: string
   updatedAt: string
 }
-
-export type Package = ProductionPackage
 
 const STORAGE_KEY = "production_packages"
 
@@ -21,7 +18,6 @@ const defaultPackages: ProductionPackage[] = [
     price: 399,
     features: ["1 hr studio rental", "20 cinematic edits", "1 look/1 backdrop", "Online gallery"],
     popular: false,
-    isActive: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -37,7 +33,6 @@ const defaultPackages: ProductionPackage[] = [
       "Color-graded gallery",
       "MUA & stylist included",
     ],
-    isActive: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -47,7 +42,6 @@ const defaultPackages: ProductionPackage[] = [
     price: 1499,
     features: ["Full-day shoot", "120+ hero images", "Unlimited sets", "Behind-the-scenes 4K video", "Same-day teaser"],
     popular: false,
-    isActive: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -114,12 +108,7 @@ export const packageStorage = {
     )
   },
 
-  filter: (filters: {
-    minPrice?: number
-    maxPrice?: number
-    popular?: boolean
-    isActive?: boolean
-  }): ProductionPackage[] => {
+  filter: (filters: { minPrice?: number; maxPrice?: number; popular?: boolean }): ProductionPackage[] => {
     let packages = packageStorage.getAll()
 
     if (filters.minPrice !== undefined) {
@@ -131,18 +120,7 @@ export const packageStorage = {
     if (filters.popular !== undefined) {
       packages = packages.filter((pkg) => pkg.popular === filters.popular)
     }
-    if (filters.isActive !== undefined) {
-      packages = packages.filter((pkg) => pkg.isActive === filters.isActive)
-    }
 
     return packages
   },
 }
-
-export const getPackages = packageStorage.getAll
-export const getPackageById = packageStorage.getById
-export const createPackage = packageStorage.create
-export const updatePackage = packageStorage.update
-export const deletePackage = packageStorage.delete
-export const searchPackages = packageStorage.search
-export const filterPackages = packageStorage.filter
