@@ -53,9 +53,7 @@ export default function AdminDashboard() {
           <div>
             <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
             <p className="text-zinc-400 mt-2">Manage bookings, payments, and packages</p>
-          </div>
-          <div className="flex items-center gap-4">
-          <div>
+              <div className="mt-2">
             <span className="text-zinc-400 text-sm">{user.email}</span>
             {role && (
               <span className="text-xs px-2 py-1 rounded-full bg-gold/10 text-gold border border-gold/20">
@@ -63,6 +61,9 @@ export default function AdminDashboard() {
               </span>
             )}
             </div>
+          </div>
+          <div className="flex items-center gap-4">
+        
             <Button
               onClick={() => setShowPasswordDialog(true)}
               variant="outline"
