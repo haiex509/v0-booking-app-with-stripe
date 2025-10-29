@@ -6,13 +6,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PaymentsView } from "@/components/admin/payments-view"
 import { ClientsView } from "@/components/admin/clients-view"
 import { PackagesView } from "@/components/admin/packages-view"
+import { UsersView } from "@/components/admin/users-view"
+import { SetupBanner } from "@/components/admin/setup-banner"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/hooks/use-auth"
+import { usePermissions } from "@/hooks/use-permissions"
 import { Loader2 } from "lucide-react"
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("payments")
   const { user, loading, signOut } = useAuth()
+  const { role, loading: permissionsLoading, can } = usePermissions()
   const router = useRouter()
 
   useEffect(() => {
@@ -26,7 +30,7 @@ export default function AdminDashboard() {
     router.push("/admin/login")
   }
 
-  if (loading) {
+  if (loading || permissionsLoading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-gold animate-spin" />
@@ -38,6 +42,8 @@ export default function AdminDashboard() {
     return null
   }
 
+  const canManageUsers = can("manage_users")
+
   return (
     <div className="min-h-screen bg-black">
       <div className="border-b border-zinc-800">
@@ -48,6 +54,11 @@ export default function AdminDashboard() {
           </div>
           <div className="flex items-center gap-4">
             <span className="text-zinc-400 text-sm">{user.email}</span>
+            {role && (
+              <span className="text-xs px-2 py-1 rounded-full bg-gold/10 text-gold border border-gold/20">
+                {role.replace("_", " ").toUpperCase()}
+              </span>
+            )}
             <Button
               onClick={handleLogout}
               variant="outline"
@@ -60,6 +71,8 @@ export default function AdminDashboard() {
       </div>
 
       <div className="container mx-auto px-4 py-8">
+        <SetupBanner />
+
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="bg-zinc-900 border border-zinc-800">
             <TabsTrigger value="payments" className="data-[state=active]:bg-zinc-800 data-[state=active]:text-gold">
@@ -71,6 +84,11 @@ export default function AdminDashboard() {
             <TabsTrigger value="packages" className="data-[state=active]:bg-zinc-800 data-[state=active]:text-gold">
               Packages
             </TabsTrigger>
+            {canManageUsers && (
+              <TabsTrigger value="users" className="data-[state=active]:bg-zinc-800 data-[state=active]:text-gold">
+                Users
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="payments" className="mt-6">
@@ -84,6 +102,12 @@ export default function AdminDashboard() {
           <TabsContent value="packages" className="mt-6">
             <PackagesView />
           </TabsContent>
+
+          {canManageUsers && (
+            <TabsContent value="users" className="mt-6">
+              <UsersView />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </div>
