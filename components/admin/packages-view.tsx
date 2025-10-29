@@ -46,8 +46,8 @@ export function PackagesView() {
     applyFilters()
   }, [packages, searchQuery, priceFilter, popularFilter])
 
-  const loadPackages = () => {
-    const allPackages = packageStorage.getAll()
+  const loadPackages = async () => {
+    const allPackages = await packageStorage.getAll()
     setPackages(allPackages)
   }
 
@@ -110,14 +110,14 @@ export function PackagesView() {
     setIsDialogOpen(true)
   }
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this package?")) {
-      packageStorage.delete(id)
+      await packageStorage.delete(id)
       loadPackages()
     }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     const packageData = {
@@ -128,9 +128,9 @@ export function PackagesView() {
     }
 
     if (editingPackage) {
-      packageStorage.update(editingPackage.id, packageData)
+      await packageStorage.update(editingPackage.id, packageData)
     } else {
-      packageStorage.create(packageData)
+      await packageStorage.create(packageData)
     }
 
     setIsDialogOpen(false)

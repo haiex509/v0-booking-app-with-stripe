@@ -15,16 +15,15 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const loadPackages = () => {
-      const storedPackages = getPackages()
+    const loadPackages = async () => {
+      const storedPackages = await getPackages()
       // Only show active packages on the public page
-      const activePackages = storedPackages.filter((pkg) => pkg.isActive)
+      const activePackages = storedPackages.filter((pkg) => pkg.is_active)
       setPackages(activePackages)
       setLoading(false)
     }
     loadPackages()
   }, [])
-  // </CHANGE>
 
   const handleSelectPackage = (pkg: Package) => {
     setSelectedPackage(pkg)
@@ -65,7 +64,6 @@ export default function Home() {
       </div>
     )
   }
-  // </CHANGE>
 
   return (
     <div className="min-h-screen bg-background ">
