@@ -8,13 +8,15 @@ import { ClientsView } from "@/components/admin/clients-view"
 import { PackagesView } from "@/components/admin/packages-view"
 import { UsersView } from "@/components/admin/users-view"
 import { SetupBanner } from "@/components/admin/setup-banner"
+import { ChangePasswordDialog } from "@/components/admin/change-password-dialog"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/hooks/use-auth"
 import { usePermissions } from "@/hooks/use-permissions"
-import { Loader2 } from "lucide-react"
+import { Loader2, Key } from "lucide-react"
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("payments")
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false)
   const { user, loading, signOut } = useAuth()
   const { role, loading: permissionsLoading, can } = usePermissions()
   const router = useRouter()
@@ -59,6 +61,15 @@ export default function AdminDashboard() {
                 {role.replace("_", " ").toUpperCase()}
               </span>
             )}
+            <Button
+              onClick={() => setShowPasswordDialog(true)}
+              variant="outline"
+              size="sm"
+              className="border-zinc-700 text-zinc-400 hover:text-white hover:bg-zinc-800 bg-transparent"
+            >
+              <Key className="h-4 w-4 mr-2" />
+              Change Password
+            </Button>
             <Button
               onClick={handleLogout}
               variant="outline"
@@ -110,6 +121,8 @@ export default function AdminDashboard() {
           )}
         </Tabs>
       </div>
+
+      <ChangePasswordDialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog} />
     </div>
   )
 }

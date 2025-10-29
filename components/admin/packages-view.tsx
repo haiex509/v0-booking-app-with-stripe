@@ -20,8 +20,12 @@ import { Pencil, Trash2, Plus, Star, Search, Filter } from "lucide-react"
 import { packageStorage, type ProductionPackage } from "@/lib/package-storage"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { usePermissions } from "@/hooks/use-permissions"
 
 export function PackagesView() {
+  const { can, isViewer } = usePermissions()
+  const canManagePackages = can("manage_packages")
+
   const [packages, setPackages] = useState<ProductionPackage[]>([])
   const [filteredPackages, setFilteredPackages] = useState<ProductionPackage[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -157,12 +161,16 @@ export function PackagesView() {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-foreground">Production Packages</h2>
-          <p className="text-sm text-muted-foreground">Manage your production packages and pricing</p>
+          <p className="text-sm text-muted-foreground">
+            {isViewer ? "View production packages and pricing" : "Manage your production packages and pricing"}
+          </p>
         </div>
-        <Button onClick={handleCreate} className="bg-primary text-primary-foreground hover:bg-primary/90">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Package
-        </Button>
+        {canManagePackages && (
+          <Button onClick={handleCreate} className="bg-primary text-primary-foreground hover:bg-primary/90">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Package
+          </Button>
+        )}
       </div>
 
       <Card className="border-border bg-card">
@@ -279,25 +287,27 @@ export function PackagesView() {
                     </li>
                   ))}
                 </ul>
-                <div className="flex gap-2 pt-4">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleEdit(pkg)}
-                    className="flex-1 border-border text-foreground hover:bg-foreground/10"
-                  >
-                    <Pencil className="h-4 w-4 mr-1" />
-                    Edit
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDelete(pkg.id)}
-                    className="border-destructive text-destructive hover:bg-destructive/10"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+                {canManagePackages && (
+                  <div className="flex gap-2 pt-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEdit(pkg)}
+                      className="flex-1 border-border text-foreground hover:bg-foreground/10"
+                    >
+                      <Pencil className="h-4 w-4 mr-1" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDelete(pkg.id)}
+                      className="border-destructive text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))
