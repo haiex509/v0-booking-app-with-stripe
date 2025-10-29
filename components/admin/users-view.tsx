@@ -27,6 +27,7 @@ import {
   ROLE_PERMISSIONS,
 } from "@/lib/types/user-roles"
 import { useAuth } from "@/hooks/use-auth"
+import { createUserRole, updateUserRole, deleteUserRole, toggleUserActive } from "@/app/actions/user-management"
 
 export function UsersView() {
   const { user } = useAuth()
@@ -38,6 +39,7 @@ export function UsersView() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<UserRoleData | null>(null)
   const [currentUserRole, setCurrentUserRole] = useState<UserRole | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const [formData, setFormData] = useState({
     email: "",
@@ -58,14 +60,13 @@ export function UsersView() {
 
     const supabase = getSupabaseBrowserClient()
     try {
-      const { data, error } = await supabase.from("user_roles").select("role").eq("user_id", user.id).single()
+      const { data, error } = await supabase.from("user_roles").select("role").eq("user_id", user.id).maybeSingle()
 
       if (error) {
         if (error.code === "PGRST205" || error.message?.includes("Could not find the table")) {
           console.warn(
             "[v0] user_roles table not found. Please run scripts/004_create_user_roles.sql to enable user management.",
           )
-          // Default to admin role when table doesn't exist
           setCurrentUserRole("admin")
           return
         }
@@ -75,6 +76,9 @@ export function UsersView() {
 
       if (data) {
         setCurrentUserRole(data.role as UserRole)
+      } else {
+        console.warn("[v0] No role found for current user, defaulting to admin")
+        setCurrentUserRole("admin")
       }
     } catch (err) {
       console.error("[v0] Exception loading current user role:", err)
@@ -145,84 +149,63 @@ export function UsersView() {
     setIsDialogOpen(false)
     setEditingUser(null)
     setFormData({ email: "", role: "viewer" })
+    setIsSubmitting(false)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const supabase = getSupabaseBrowserClient()
+    setIsSubmitting(true)
 
-    if (editingUser) {
-      // Update existing user role
-      const { error } = await supabase
-        .from("user_roles")
-        .update({
-          role: formData.role,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", editingUser.id)
+    try {
+      if (editingUser) {
+        const result = await updateUserRole(editingUser.id, formData.role)
 
-      if (error) {
-        console.error("Error updating user:", error)
-        alert("Failed to update user")
+        if (result.error) {
+          alert(result.error)
+        } else {
+          await loadUsers()
+          handleCloseDialog()
+        }
       } else {
-        await loadUsers()
-        handleCloseDialog()
+        if (!user?.id) {
+          alert("You must be logged in to create user roles")
+          return
+        }
+
+        const result = await createUserRole(formData.email, formData.role, user.id)
+
+        if (result.error) {
+          alert(result.error)
+        } else {
+          await loadUsers()
+          handleCloseDialog()
+        }
       }
-    } else {
-      // Create new user - first check if user exists in auth.users
-      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers()
-
-      if (authError) {
-        alert("Failed to check existing users. Make sure you have admin privileges.")
-        return
-      }
-
-      const existingAuthUser = authUsers.users.find((u) => u.email === formData.email)
-
-      if (!existingAuthUser) {
-        alert("User must be created in Supabase Auth first. Please create the user account before assigning a role.")
-        return
-      }
-
-      // Insert user role
-      const { error } = await supabase.from("user_roles").insert({
-        user_id: existingAuthUser.id,
-        email: formData.email,
-        role: formData.role,
-        created_by: user?.id,
-      })
-
-      if (error) {
-        console.error("Error creating user role:", error)
-        alert("Failed to create user role")
-      } else {
-        await loadUsers()
-        handleCloseDialog()
-      }
+    } catch (err) {
+      console.error("[v0] Error submitting form:", err)
+      alert("An unexpected error occurred")
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
   const handleDelete = async (userId: string) => {
     if (!confirm("Are you sure you want to remove this user's access?")) return
 
-    const supabase = getSupabaseBrowserClient()
-    const { error } = await supabase.from("user_roles").delete().eq("id", userId)
+    const result = await deleteUserRole(userId)
 
-    if (error) {
-      console.error("Error deleting user:", error)
-      alert("Failed to delete user")
+    if (result.error) {
+      alert(result.error)
     } else {
       await loadUsers()
     }
   }
 
   const handleToggleActive = async (userId: string, currentStatus: boolean) => {
-    const supabase = getSupabaseBrowserClient()
-    const { error } = await supabase.from("user_roles").update({ is_active: !currentStatus }).eq("id", userId)
+    const result = await toggleUserActive(userId, !currentStatus)
 
-    if (error) {
-      console.error("Error toggling user status:", error)
-      alert("Failed to update user status")
+    if (result.error) {
+      alert(result.error)
     } else {
       await loadUsers()
     }
@@ -278,7 +261,6 @@ export function UsersView() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">User Management</h2>
@@ -292,7 +274,6 @@ export function UsersView() {
         )}
       </div>
 
-      {/* Filters */}
       <div className="flex gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -317,7 +298,6 @@ export function UsersView() {
         </Select>
       </div>
 
-      {/* Users Table */}
       <div className="rounded-lg border border-border bg-card">
         <Table>
           <TableHeader>
@@ -398,7 +378,6 @@ export function UsersView() {
         </Table>
       </div>
 
-      {/* Add/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -474,10 +453,12 @@ export function UsersView() {
               </div>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={handleCloseDialog}>
+              <Button type="button" variant="outline" onClick={handleCloseDialog} disabled={isSubmitting}>
                 Cancel
               </Button>
-              <Button type="submit">{editingUser ? "Update" : "Add"} User</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Saving..." : editingUser ? "Update" : "Add"} User
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
