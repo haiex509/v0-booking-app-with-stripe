@@ -104,7 +104,7 @@ export async function GET(req: NextRequest) {
     const session = await stripe.checkout.sessions.retrieve(sessionId)
 
     return NextResponse.json({
-      status: session.payment_status, // "paid", "unpaid", etc.
+      payment_status: session.payment_status, // "paid", "unpaid", etc.
       payment_intent: session.payment_intent,
       customerEmail: session.customer_details?.email,
       metadata: session.metadata,

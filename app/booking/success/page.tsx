@@ -5,13 +5,21 @@ import { useSearchParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { CheckCircle2, Loader2, AlertCircle } from "lucide-react"
-import { bookingStorage } from "@/lib/booking-storage"
-import type { Booking } from "@/components/booking-calendar"
+
+type BookingDisplay = {
+  id: string
+  serviceName: string
+  date: string
+  time: string
+  price: number
+  customerEmail: string
+  customerName: string
+}
 
 function SuccessContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const [booking, setBooking] = useState<Booking | null>(null)
+  const [booking, setBooking] = useState<BookingDisplay | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -37,59 +45,22 @@ function SuccessContent() {
         const data = await response.json()
         console.log("[v0] Payment verification response:", data)
 
-        if (data.status === "paid") {
-          const bookingData = JSON.parse(data.metadata.bookingData)
-          console.log("[v0] Payment confirmed, updating booking...")
+        if (data.payment_status === "paid") {
+          const bookingData = JSON.parse(data.metadata?.bookingData || "{}")
+          console.log("[v0] Payment confirmed, displaying booking info")
 
-          try {
-            const updateResponse = await fetch("/api/bookings", {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                paymentIntentId: data.payment_intent,
-                status: "confirmed",
-              }),
-            })
-
-            if (updateResponse.ok) {
-              const { booking: confirmedBooking } = await updateResponse.json()
-              console.log("[v0] Booking confirmed in database:", confirmedBooking.id)
-
-              setBooking({
-                id: confirmedBooking.id,
-                date: confirmedBooking.booking_date,
-                time: confirmedBooking.booking_time,
-                customerName: confirmedBooking.customer_name,
-                customerEmail: confirmedBooking.customer_email,
-                serviceName: bookingData.serviceName,
-                price: confirmedBooking.price,
-                status: "confirmed",
-                createdAt: confirmedBooking.created_at,
-              })
-            } else {
-              const errorText = await updateResponse.text()
-              console.error("[v0] Failed to update booking:", errorText)
-              throw new Error("Failed to confirm booking in database")
-            }
-          } catch (dbError) {
-            console.error("[v0] Database error, using fallback:", dbError)
-            const newBooking: Booking = {
-              id: crypto.randomUUID(),
-              date: bookingData.date,
-              time: bookingData.time,
-              customerName: bookingData.customerName,
-              customerEmail: bookingData.customerEmail,
-              serviceName: bookingData.serviceName,
-              price: bookingData.price,
-              status: "confirmed",
-              createdAt: new Date().toISOString(),
-            }
-            bookingStorage.save(newBooking)
-            setBooking(newBooking)
-          }
+          setBooking({
+            id: sessionId,
+            serviceName: bookingData.serviceName || "Production Service",
+            date: bookingData.date,
+            time: bookingData.time,
+            price: bookingData.price,
+            customerEmail: data.customerEmail || bookingData.customerEmail,
+            customerName: bookingData.customerName,
+          })
         } else {
-          console.error("[v0] Payment not completed. Status:", data.status)
-          setError(`Payment status: ${data.status}. Please contact support if you were charged.`)
+          console.error("[v0] Payment not completed. Status:", data.payment_status)
+          setError(`Payment status: ${data.payment_status}. Please contact support if you were charged.`)
         }
       } catch (error) {
         console.error("[v0] Error verifying payment:", error)
