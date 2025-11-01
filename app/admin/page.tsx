@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/use-auth"
 import { usePermissions } from "@/hooks/use-permissions"
 import { Loader2, Key, LogOut } from "lucide-react"
 import { TimeSlotsView } from "@/components/admin/time-slots-view"
+import { BookingsView } from "@/components/admin/bookings-view"
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("payments")
@@ -90,6 +91,9 @@ export default function AdminDashboard() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="bg-zinc-900 border border-zinc-800">
+            <TabsTrigger value="bookings" className="data-[state=active]:bg-zinc-800 data-[state=active]:text-gold">
+              Bookings
+            </TabsTrigger>
             <TabsTrigger value="payments" className="data-[state=active]:bg-zinc-800 data-[state=active]:text-gold">
               Payments
             </TabsTrigger>
@@ -108,6 +112,10 @@ export default function AdminDashboard() {
               </TabsTrigger>
             )}
           </TabsList>
+
+          <TabsContent value="bookings" className="mt-6">
+            <BookingsView />
+          </TabsContent>
 
           <TabsContent value="payments" className="mt-6">
             <PaymentsView />

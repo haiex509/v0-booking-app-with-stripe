@@ -9,8 +9,30 @@ export async function POST(req: NextRequest) {
   try {
     const { bookingData } = await req.json()
 
-    const origin = req.headers.get("origin") || req.headers.get("referer")?.split("/").slice(0, 3).join("/")
-    const baseUrl = origin || `https://${req.headers.get("host")}`
+    const origin = req.headers.get("origin")
+    const referer = req.headers.get("referer")
+    const host = req.headers.get("host")
+
+    // Try multiple methods to get the base URL
+    let baseUrl = origin
+    if (!baseUrl && referer) {
+      try {
+        const refererUrl = new URL(referer)
+        baseUrl = `${refererUrl.protocol}//${refererUrl.host}`
+      } catch (e) {
+        console.error("[v0] Failed to parse referer:", e)
+      }
+    }
+    if (!baseUrl && host) {
+      // Determine protocol based on host
+      const protocol = host.includes("localhost") ? "http" : "https"
+      baseUrl = `${protocol}://${host}`
+    }
+
+    // Fallback to environment variable if available
+    if (!baseUrl) {
+      baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
+    }
 
     console.log("[v0] Creating checkout session with baseUrl:", baseUrl)
 
@@ -45,11 +67,15 @@ export async function POST(req: NextRequest) {
           ...bookingData,
           sessionId: session.id,
           paymentIntentId: session.payment_intent,
+          status: "pending",
         }),
       })
 
       if (!bookingResponse.ok) {
-        console.error("[v0] Failed to create booking in database")
+        const errorText = await bookingResponse.text()
+        console.error("[v0] Failed to create booking in database:", errorText)
+      } else {
+        console.log("[v0] Booking created successfully in database")
       }
     } catch (dbError) {
       console.error("[v0] Error creating booking:", dbError)
@@ -57,7 +83,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ sessionId: session.id, url: session.url })
   } catch (error) {
-    console.error("Error creating checkout session:", error)
+    console.error("[v0] Error creating checkout session:", error)
     return NextResponse.json({ error: "Error creating checkout session" }, { status: 500 })
   }
 }
