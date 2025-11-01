@@ -10,8 +10,6 @@ export async function POST(req: NextRequest) {
     const { bookingData } = await req.json()
 
     const origin = req.headers.get("origin") || req.headers.get("referer")?.split("/").slice(0, 3).join("/")
-
-    // Fallback to constructing URL from host header if origin is not available
     const baseUrl = origin || `https://${req.headers.get("host")}`
 
     console.log("[v0] Creating checkout session with baseUrl:", baseUrl)
@@ -26,7 +24,7 @@ export async function POST(req: NextRequest) {
               name: bookingData.serviceName || "Booking Service",
               description: `Booking for ${bookingData.date} at ${bookingData.time}`,
             },
-            unit_amount: bookingData.price * 100, // Convert to cents
+            unit_amount: bookingData.price * 100,
           },
           quantity: 1,
         },
@@ -38,6 +36,24 @@ export async function POST(req: NextRequest) {
         bookingData: JSON.stringify(bookingData),
       },
     })
+
+    try {
+      const bookingResponse = await fetch(`${baseUrl}/api/bookings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...bookingData,
+          sessionId: session.id,
+          paymentIntentId: session.payment_intent,
+        }),
+      })
+
+      if (!bookingResponse.ok) {
+        console.error("[v0] Failed to create booking in database")
+      }
+    } catch (dbError) {
+      console.error("[v0] Error creating booking:", dbError)
+    }
 
     return NextResponse.json({ sessionId: session.id, url: session.url })
   } catch (error) {

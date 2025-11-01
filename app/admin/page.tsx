@@ -12,7 +12,8 @@ import { ChangePasswordDialog } from "@/components/admin/change-password-dialog"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/hooks/use-auth"
 import { usePermissions } from "@/hooks/use-permissions"
-import { Loader2, Key,LogOut } from "lucide-react"
+import { Loader2, Key, LogOut } from "lucide-react"
+import { TimeSlotsView } from "@/components/admin/time-slots-view"
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("payments")
@@ -53,17 +54,16 @@ export default function AdminDashboard() {
           <div>
             <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
             <p className="text-zinc-400 mt-2">Manage bookings, payments, and packages</p>
-              <div className="mt-2">
-            <span className="text-zinc-400 text-sm">{user.email}</span>
-            {role && (
-              <span className="text-xs px-2 py-1 rounded-full bg-gold/10 text-gold border border-gold/20">
-                {role.replace("_", " ").toUpperCase()}
-              </span>
-            )}
+            <div className="mt-2">
+              <span className="text-zinc-400 text-sm">{user.email}</span>
+              {role && (
+                <span className="text-xs px-2 py-1 rounded-full bg-gold/10 text-gold border border-gold/20">
+                  {role.replace("_", " ").toUpperCase()}
+                </span>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-4">
-        
             <Button
               onClick={() => setShowPasswordDialog(true)}
               variant="outline"
@@ -71,15 +71,15 @@ export default function AdminDashboard() {
               className="border-zinc-700 text-zinc-400 hover:text-white hover:bg-zinc-800 bg-transparent"
             >
               <Key className="h-4 w-4 mr-2" />
-            <span className="hidden lg:block">Change Password </span>
+              <span className="hidden lg:block">Change Password </span>
             </Button>
             <Button
               onClick={handleLogout}
               variant="outline"
               className="border-zinc-700 text-zinc-400 hover:text-white hover:bg-zinc-800 bg-transparent"
             >
-                <LogOut className="h-4 w-4 mr-2" />
-            <span className="hidden lg:block">Logout</span>
+              <LogOut className="h-4 w-4 mr-2" />
+              <span className="hidden lg:block">Logout</span>
             </Button>
           </div>
         </div>
@@ -99,6 +99,9 @@ export default function AdminDashboard() {
             <TabsTrigger value="packages" className="data-[state=active]:bg-zinc-800 data-[state=active]:text-gold">
               Packages
             </TabsTrigger>
+            <TabsTrigger value="timeslots" className="data-[state=active]:bg-zinc-800 data-[state=active]:text-gold">
+              Time Slots
+            </TabsTrigger>
             {canManageUsers && (
               <TabsTrigger value="users" className="data-[state=active]:bg-zinc-800 data-[state=active]:text-gold">
                 Users
@@ -116,6 +119,10 @@ export default function AdminDashboard() {
 
           <TabsContent value="packages" className="mt-6">
             <PackagesView />
+          </TabsContent>
+
+          <TabsContent value="timeslots" className="mt-6">
+            <TimeSlotsView />
           </TabsContent>
 
           {canManageUsers && (

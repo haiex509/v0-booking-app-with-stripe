@@ -22,7 +22,6 @@ function SuccessContent() {
       return
     }
 
-    // Verify payment and save booking
     const verifyPayment = async () => {
       try {
         const response = await fetch(`/api/stripe/checkout?session_id=${sessionId}`)
@@ -31,20 +30,47 @@ function SuccessContent() {
         if (data.status === "paid") {
           const bookingData = JSON.parse(data.metadata.bookingData)
 
-          const newBooking: Booking = {
-            id: crypto.randomUUID(),
-            date: bookingData.date,
-            time: bookingData.time,
-            customerName: bookingData.customerName,
-            customerEmail: bookingData.customerEmail,
-            serviceName: bookingData.serviceName,
-            price: bookingData.price,
-            status: "confirmed",
-            createdAt: new Date().toISOString(),
-          }
+          try {
+            const updateResponse = await fetch("/api/bookings", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                paymentIntentId: data.payment_intent,
+                status: "confirmed",
+              }),
+            })
 
-          bookingStorage.save(newBooking)
-          setBooking(newBooking)
+            if (updateResponse.ok) {
+              const { booking } = await updateResponse.json()
+              setBooking({
+                id: booking.id,
+                date: booking.booking_date,
+                time: booking.booking_time,
+                customerName: booking.customer_name,
+                customerEmail: booking.customer_email,
+                serviceName: bookingData.serviceName,
+                price: booking.price,
+                status: "confirmed",
+                createdAt: booking.created_at,
+              })
+            }
+          } catch (dbError) {
+            console.error("[v0] Error updating booking:", dbError)
+            // Fallback to localStorage
+            const newBooking: Booking = {
+              id: crypto.randomUUID(),
+              date: bookingData.date,
+              time: bookingData.time,
+              customerName: bookingData.customerName,
+              customerEmail: bookingData.customerEmail,
+              serviceName: bookingData.serviceName,
+              price: bookingData.price,
+              status: "confirmed",
+              createdAt: new Date().toISOString(),
+            }
+            bookingStorage.save(newBooking)
+            setBooking(newBooking)
+          }
         }
       } catch (error) {
         console.error("Error verifying payment:", error)
