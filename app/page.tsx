@@ -66,8 +66,8 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-background ">
-      <div className="border-b border-border">
+    <div className="bg-background ">
+    {/*  <div className="border-b border-border">
         <div className="container mx-auto px-5 py-4 flex justify-end">
           <Link href="/admin">
             <Button
@@ -79,7 +79,7 @@ export default function Home() {
             </Button>
           </Link>
         </div>
-      </div>
+      </div>*/}
 
       <div className="container py-12 px-5 space-y-16  mx-auto">
         <div className="text-center space-y-3 max-w-2xl mx-auto">
