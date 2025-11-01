@@ -12,9 +12,11 @@ export async function POST(req: NextRequest) {
     const origin = req.headers.get("origin")
     const referer = req.headers.get("referer")
     const host = req.headers.get("host")
+    const forwardedHost = req.headers.get("x-forwarded-host")
+    const forwardedProto = req.headers.get("x-forwarded-proto")
 
-    // Try multiple methods to get the base URL
     let baseUrl = origin
+
     if (!baseUrl && referer) {
       try {
         const refererUrl = new URL(referer)
@@ -23,15 +25,16 @@ export async function POST(req: NextRequest) {
         console.error("[v0] Failed to parse referer:", e)
       }
     }
-    if (!baseUrl && host) {
-      // Determine protocol based on host
-      const protocol = host.includes("localhost") ? "http" : "https"
-      baseUrl = `${protocol}://${host}`
+
+    if (!baseUrl && (forwardedHost || host)) {
+      const finalHost = forwardedHost || host
+      const protocol = forwardedProto || (finalHost?.includes("localhost") ? "http" : "https")
+      baseUrl = `${protocol}://${finalHost}`
     }
 
-    // Fallback to environment variable if available
-    if (!baseUrl) {
+    if (!baseUrl || baseUrl === "https://null" || baseUrl === "http://null") {
       baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
+      console.warn("[v0] Using fallback baseUrl:", baseUrl)
     }
 
     console.log("[v0] Creating checkout session with baseUrl:", baseUrl)
@@ -54,6 +57,7 @@ export async function POST(req: NextRequest) {
       mode: "payment",
       success_url: `${baseUrl}/booking/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/booking/cancel`,
+      customer_email: bookingData.customerEmail,
       metadata: {
         bookingData: JSON.stringify(bookingData),
       },
@@ -75,7 +79,8 @@ export async function POST(req: NextRequest) {
         const errorText = await bookingResponse.text()
         console.error("[v0] Failed to create booking in database:", errorText)
       } else {
-        console.log("[v0] Booking created successfully in database")
+        const result = await bookingResponse.json()
+        console.log("[v0] Booking created successfully:", result.booking?.id)
       }
     } catch (dbError) {
       console.error("[v0] Error creating booking:", dbError)
@@ -99,12 +104,13 @@ export async function GET(req: NextRequest) {
     const session = await stripe.checkout.sessions.retrieve(sessionId)
 
     return NextResponse.json({
-      status: session.payment_status,
+      status: session.payment_status, // "paid", "unpaid", etc.
+      payment_intent: session.payment_intent,
       customerEmail: session.customer_details?.email,
       metadata: session.metadata,
     })
   } catch (error) {
-    console.error("Error retrieving checkout session:", error)
+    console.error("[v0] Error retrieving checkout session:", error)
     return NextResponse.json({ error: "Error retrieving checkout session" }, { status: 500 })
   }
 }

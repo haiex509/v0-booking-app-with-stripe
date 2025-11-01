@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { CheckCircle2, Loader2 } from "lucide-react"
+import { CheckCircle2, Loader2, AlertCircle } from "lucide-react"
 import { bookingStorage } from "@/lib/booking-storage"
 import type { Booking } from "@/components/booking-calendar"
 
@@ -13,22 +13,33 @@ function SuccessContent() {
   const router = useRouter()
   const [booking, setBooking] = useState<Booking | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const sessionId = searchParams.get("session_id")
 
     if (!sessionId) {
+      console.error("[v0] No session_id in URL")
       router.push("/")
       return
     }
 
     const verifyPayment = async () => {
       try {
+        console.log("[v0] Verifying payment for session:", sessionId)
+
         const response = await fetch(`/api/stripe/checkout?session_id=${sessionId}`)
+
+        if (!response.ok) {
+          throw new Error(`Failed to verify payment: ${response.statusText}`)
+        }
+
         const data = await response.json()
+        console.log("[v0] Payment verification response:", data)
 
         if (data.status === "paid") {
           const bookingData = JSON.parse(data.metadata.bookingData)
+          console.log("[v0] Payment confirmed, updating booking...")
 
           try {
             const updateResponse = await fetch("/api/bookings", {
@@ -41,22 +52,27 @@ function SuccessContent() {
             })
 
             if (updateResponse.ok) {
-              const { booking } = await updateResponse.json()
+              const { booking: confirmedBooking } = await updateResponse.json()
+              console.log("[v0] Booking confirmed in database:", confirmedBooking.id)
+
               setBooking({
-                id: booking.id,
-                date: booking.booking_date,
-                time: booking.booking_time,
-                customerName: booking.customer_name,
-                customerEmail: booking.customer_email,
+                id: confirmedBooking.id,
+                date: confirmedBooking.booking_date,
+                time: confirmedBooking.booking_time,
+                customerName: confirmedBooking.customer_name,
+                customerEmail: confirmedBooking.customer_email,
                 serviceName: bookingData.serviceName,
-                price: booking.price,
+                price: confirmedBooking.price,
                 status: "confirmed",
-                createdAt: booking.created_at,
+                createdAt: confirmedBooking.created_at,
               })
+            } else {
+              const errorText = await updateResponse.text()
+              console.error("[v0] Failed to update booking:", errorText)
+              throw new Error("Failed to confirm booking in database")
             }
           } catch (dbError) {
-            console.error("[v0] Error updating booking:", dbError)
-            // Fallback to localStorage
+            console.error("[v0] Database error, using fallback:", dbError)
             const newBooking: Booking = {
               id: crypto.randomUUID(),
               date: bookingData.date,
@@ -71,9 +87,13 @@ function SuccessContent() {
             bookingStorage.save(newBooking)
             setBooking(newBooking)
           }
+        } else {
+          console.error("[v0] Payment not completed. Status:", data.status)
+          setError(`Payment status: ${data.status}. Please contact support if you were charged.`)
         }
       } catch (error) {
-        console.error("Error verifying payment:", error)
+        console.error("[v0] Error verifying payment:", error)
+        setError(error instanceof Error ? error.message : "Unknown error occurred")
       } finally {
         setLoading(false)
       }
@@ -85,20 +105,34 @@ function SuccessContent() {
   if (loading) {
     return (
       <div className="container flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <div className="text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+          <p className="text-sm text-muted-foreground">Verifying your payment...</p>
+        </div>
       </div>
     )
   }
 
-  if (!booking) {
+  if (error || !booking) {
     return (
       <div className="container flex items-center justify-center min-h-screen">
         <Card className="max-w-md">
           <CardHeader>
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+              <AlertCircle className="h-6 w-6 text-red-600" />
+            </div>
             <CardTitle>Payment Verification Failed</CardTitle>
-            <CardDescription>We couldn't verify your payment. Please contact support.</CardDescription>
+            <CardDescription>{error || "We couldn't verify your payment. Please contact support."}</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            <div className="rounded-lg bg-muted p-4 text-sm">
+              <p className="font-medium mb-2">What to do next:</p>
+              <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                <li>Check your email for a payment confirmation from Stripe</li>
+                <li>Contact support with your session ID</li>
+                <li>Do not attempt to pay again until confirmed</li>
+              </ul>
+            </div>
             <Button onClick={() => router.push("/")} className="w-full">
               Return Home
             </Button>
