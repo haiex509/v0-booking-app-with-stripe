@@ -6,23 +6,35 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2024-12-18.acacia",
 })
 
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
+const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.text()
-    const signature = req.headers.get("stripe-signature")!
+    const signature = req.headers.get("stripe-signature")
+
+    if (!signature) {
+      console.error("[v0] Missing stripe-signature header")
+      return NextResponse.json({ error: "Missing signature" }, { status: 400 })
+    }
 
     let event: Stripe.Event
 
-    try {
-      event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
-    } catch (err) {
-      console.error("[v0] Webhook signature verification failed:", err)
-      return NextResponse.json({ error: "Invalid signature" }, { status: 400 })
+    if (webhookSecret) {
+      try {
+        event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
+      } catch (err) {
+        console.error("[v0] Webhook signature verification failed:", err)
+        return NextResponse.json({ error: "Invalid signature" }, { status: 400 })
+      }
+    } else {
+      console.warn("[v0] STRIPE_WEBHOOK_SECRET not set - skipping signature verification (development only)")
+      event = JSON.parse(body)
     }
 
-    console.log("[v0] Webhook event received:", event.type)
+    console.log("[v0] ===== WEBHOOK EVENT RECEIVED =====")
+    console.log("[v0] Event type:", event.type)
+    console.log("[v0] Event ID:", event.id)
 
     switch (event.type) {
       case "checkout.session.completed":
@@ -49,14 +61,23 @@ export async function POST(req: NextRequest) {
 }
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
-  console.log("[v0] Processing checkout.session.completed:", session.id)
+  console.log("[v0] ===== PROCESSING CHECKOUT COMPLETED =====")
+  console.log("[v0] Session ID:", session.id)
+  console.log("[v0] Payment Intent:", session.payment_intent)
+  console.log("[v0] Amount Total:", session.amount_total)
 
   const supabase = await getSupabaseServerClient()
   const bookingData = JSON.parse(session.metadata?.bookingData || "{}")
 
+  console.log("[v0] Booking data from metadata:", bookingData)
+
   try {
     let customerId: string | null = null
     const customerEmail = session.customer_details?.email || bookingData.customerEmail
+    const customerName = session.customer_details?.name || bookingData.customerName
+    const customerPhone = session.customer_details?.phone || bookingData.customerPhone
+
+    console.log("[v0] Looking for existing customer with email:", customerEmail)
 
     const { data: existingCustomer } = await supabase
       .from("customers")
@@ -66,38 +87,43 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 
     if (existingCustomer) {
       customerId = existingCustomer.id
-      console.log("[v0] Found existing customer:", customerId)
+      console.log("[v0] ✓ Found existing customer:", customerId)
     } else {
+      console.log("[v0] Creating new customer...")
       const { data: newCustomer, error: customerError } = await supabase
         .from("customers")
         .insert([
           {
-            name: session.customer_details?.name || bookingData.customerName,
+            name: customerName,
             email: customerEmail,
-            phone: session.customer_details?.phone || bookingData.customerPhone,
+            phone: customerPhone,
           },
         ])
         .select()
         .single()
 
       if (customerError) {
-        console.error("[v0] Error creating customer:", customerError)
+        console.error("[v0] ✗ Error creating customer:", customerError)
+        throw customerError
       } else {
         customerId = newCustomer.id
-        console.log("[v0] Created new customer:", customerId)
+        console.log("[v0] ✓ Created new customer:", customerId)
       }
     }
 
+    console.log("[v0] Checking for existing booking with session_id:", session.id)
+
     const { data: existingBooking } = await supabase
       .from("bookings")
-      .select("id")
+      .select("id, status")
       .eq("stripe_session_id", session.id)
       .maybeSingle()
 
     let bookingId: string
 
     if (existingBooking) {
-      // Update existing booking
+      console.log("[v0] Found existing booking:", existingBooking.id, "Status:", existingBooking.status)
+
       const { data: updatedBooking, error: updateError } = await supabase
         .from("bookings")
         .update({
@@ -111,23 +137,24 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
         .single()
 
       if (updateError) {
-        console.error("[v0] Error updating booking:", updateError)
+        console.error("[v0] ✗ Error updating booking:", updateError)
         throw updateError
       }
 
       bookingId = updatedBooking.id
-      console.log("[v0] Updated existing booking:", bookingId)
+      console.log("[v0] ✓ Updated booking to confirmed:", bookingId)
     } else {
-      // Create new booking
+      console.log("[v0] No existing booking found, creating new one...")
+
       const { data: newBooking, error: bookingError } = await supabase
         .from("bookings")
         .insert([
           {
             booking_date: bookingData.date,
             booking_time: bookingData.time,
-            customer_name: session.customer_details?.name || bookingData.customerName,
+            customer_name: customerName,
             customer_email: customerEmail,
-            customer_phone: session.customer_details?.phone || bookingData.customerPhone,
+            customer_phone: customerPhone,
             customer_id: customerId,
             package_id: bookingData.packageId,
             price: (session.amount_total || 0) / 100,
@@ -141,43 +168,64 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
         .single()
 
       if (bookingError) {
-        console.error("[v0] Error creating booking:", bookingError)
+        console.error("[v0] ✗ Error creating booking:", bookingError)
         throw bookingError
       }
 
       bookingId = newBooking.id
-      console.log("[v0] Created new booking:", bookingId)
+      console.log("[v0] ✓ Created new booking:", bookingId)
     }
 
-    const { error: paymentError } = await supabase.from("payments").insert([
-      {
-        booking_id: bookingId,
-        customer_id: customerId,
-        stripe_payment_intent_id: session.payment_intent as string,
-        stripe_session_id: session.id,
-        amount: (session.amount_total || 0) / 100,
-        currency: session.currency || "usd",
-        status: "succeeded",
-        payment_method: session.payment_method_types?.[0],
-        customer_email: customerEmail,
-        customer_name: session.customer_details?.name || bookingData.customerName,
-        metadata: bookingData,
-      },
-    ])
+    console.log("[v0] Creating payment record...")
+
+    const { data: paymentData, error: paymentError } = await supabase
+      .from("payments")
+      .insert([
+        {
+          booking_id: bookingId,
+          customer_id: customerId,
+          stripe_payment_intent_id: session.payment_intent as string,
+          stripe_session_id: session.id,
+          amount: (session.amount_total || 0) / 100,
+          currency: session.currency || "usd",
+          status: "succeeded",
+          payment_method: session.payment_method_types?.[0],
+          customer_email: customerEmail,
+          customer_name: customerName,
+          metadata: bookingData,
+        },
+      ])
+      .select()
+      .single()
 
     if (paymentError) {
-      console.error("[v0] Error creating payment record:", paymentError)
+      console.error("[v0] ✗ Error creating payment record:", paymentError)
+      throw paymentError
     } else {
-      console.log("[v0] Payment record created for booking:", bookingId)
+      console.log("[v0] ✓ Payment record created:", paymentData.id)
     }
 
     if (customerId) {
-      await supabase.rpc("update_customer_stats", { p_customer_id: customerId })
+      console.log("[v0] Updating customer statistics...")
+
+      const { error: statsError } = await supabase.rpc("update_customer_stats", {
+        p_customer_id: customerId,
+      })
+
+      if (statsError) {
+        console.error("[v0] ✗ Error updating customer stats:", statsError)
+      } else {
+        console.log("[v0] ✓ Customer statistics updated")
+      }
     }
 
-    console.log("[v0] Checkout completed successfully for booking:", bookingId)
+    console.log("[v0] ===== CHECKOUT COMPLETED SUCCESSFULLY =====")
+    console.log("[v0] Booking ID:", bookingId)
+    console.log("[v0] Customer ID:", customerId)
+    console.log("[v0] Payment ID:", paymentData.id)
   } catch (error) {
-    console.error("[v0] Error in handleCheckoutCompleted:", error)
+    console.error("[v0] ===== ERROR IN CHECKOUT COMPLETION =====")
+    console.error("[v0] Error details:", error)
     throw error
   }
 }

@@ -4,7 +4,8 @@ import { useEffect, useState, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { CheckCircle2, Loader2, AlertCircle } from "lucide-react"
+import { CheckCircle2, Loader2, AlertCircle, Database } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 type BookingDisplay = {
   id: string
@@ -16,12 +17,21 @@ type BookingDisplay = {
   customerName: string
 }
 
+type VerificationStatus = {
+  booking: boolean
+  payment: boolean
+  customer: boolean
+  synced: boolean
+}
+
 function SuccessContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [booking, setBooking] = useState<BookingDisplay | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [verificationStatus, setVerificationStatus] = useState<VerificationStatus | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
 
   useEffect(() => {
     const sessionId = searchParams.get("session_id")
@@ -32,59 +42,104 @@ function SuccessContent() {
       return
     }
 
-    const verifyPayment = async () => {
+    const verifyPaymentAndData = async () => {
       try {
-        console.log("[v0] Verifying payment for session:", sessionId)
+        console.log("[v0] ===== VERIFYING PAYMENT AND DATA =====")
+        console.log("[v0] Session ID:", sessionId)
+        console.log("[v0] Retry attempt:", retryCount)
 
-        const response = await fetch(`/api/stripe/checkout?session_id=${sessionId}`)
+        // Step 1: Verify payment with Stripe
+        const paymentResponse = await fetch(`/api/stripe/checkout?session_id=${sessionId}`)
 
-        if (!response.ok) {
-          throw new Error(`Failed to verify payment: ${response.statusText}`)
+        if (!paymentResponse.ok) {
+          throw new Error(`Failed to verify payment: ${paymentResponse.statusText}`)
         }
 
-        const data = await response.json()
-        console.log("[v0] Payment verification response:", data)
+        const paymentData = await paymentResponse.json()
+        console.log("[v0] Payment status:", paymentData.payment_status)
 
-        if (data.payment_status === "paid") {
-          const bookingData = JSON.parse(data.metadata?.bookingData || "{}")
-          console.log("[v0] Payment confirmed, displaying booking info")
-
-          setBooking({
-            id: sessionId,
-            serviceName: bookingData.serviceName || "Production Service",
-            date: bookingData.date,
-            time: bookingData.time,
-            price: bookingData.price,
-            customerEmail: data.customerEmail || bookingData.customerEmail,
-            customerName: bookingData.customerName,
-          })
-        } else {
-          console.error("[v0] Payment not completed. Status:", data.payment_status)
-          setError(`Payment status: ${data.payment_status}. Please contact support if you were charged.`)
+        if (paymentData.payment_status !== "paid") {
+          console.error("[v0] Payment not completed. Status:", paymentData.payment_status)
+          setError(`Payment status: ${paymentData.payment_status}. Please contact support if you were charged.`)
+          setLoading(false)
+          return
         }
+
+        // Step 2: Verify data was saved to database
+        console.log("[v0] Payment confirmed, verifying database sync...")
+
+        const verifyResponse = await fetch(`/api/bookings/verify?session_id=${sessionId}`)
+
+        if (!verifyResponse.ok) {
+          throw new Error(`Failed to verify booking data: ${verifyResponse.statusText}`)
+        }
+
+        const verifyData = await verifyResponse.json()
+        console.log("[v0] Database verification result:", verifyData)
+
+        setVerificationStatus({
+          booking: !!verifyData.booking,
+          payment: !!verifyData.payment,
+          customer: !!verifyData.customer,
+          synced: verifyData.synced,
+        })
+
+        // If data is not synced yet and we haven't retried too many times, retry
+        if (!verifyData.synced && retryCount < 5) {
+          console.log("[v0] Data not synced yet, retrying in 2 seconds...")
+          setTimeout(() => {
+            setRetryCount(retryCount + 1)
+          }, 2000)
+          return
+        }
+
+        // If still not synced after retries, show warning but display booking info
+        if (!verifyData.synced) {
+          console.warn("[v0] Data sync incomplete after retries")
+          setError(
+            "Your payment was successful, but we're still processing your booking. You'll receive a confirmation email shortly.",
+          )
+        }
+
+        // Display booking information
+        const bookingData = JSON.parse(paymentData.metadata?.bookingData || "{}")
+
+        setBooking({
+          id: verifyData.booking?.id || sessionId,
+          serviceName: bookingData.serviceName || "Production Service",
+          date: verifyData.booking?.booking_date || bookingData.date,
+          time: verifyData.booking?.booking_time || bookingData.time,
+          price: verifyData.booking?.price || bookingData.price,
+          customerEmail: verifyData.customer?.email || paymentData.customerEmail || bookingData.customerEmail,
+          customerName: verifyData.customer?.name || bookingData.customerName,
+        })
+
+        console.log("[v0] ===== VERIFICATION COMPLETE =====")
+        setLoading(false)
       } catch (error) {
         console.error("[v0] Error verifying payment:", error)
         setError(error instanceof Error ? error.message : "Unknown error occurred")
-      } finally {
         setLoading(false)
       }
     }
 
-    verifyPayment()
-  }, [searchParams, router])
+    verifyPaymentAndData()
+  }, [searchParams, router, retryCount])
 
   if (loading) {
     return (
       <div className="container flex items-center justify-center min-h-screen">
         <div className="text-center space-y-4">
           <Loader2 className="h-8 w-8 animate-spin mx-auto" />
-          <p className="text-sm text-muted-foreground">Verifying your payment...</p>
+          <p className="text-sm text-muted-foreground">
+            {retryCount > 0 ? `Verifying booking data... (${retryCount}/5)` : "Verifying your payment..."}
+          </p>
         </div>
       </div>
     )
   }
 
-  if (error || !booking) {
+  if (error && !booking) {
     return (
       <div className="container flex items-center justify-center min-h-screen">
         <Card className="max-w-md">
@@ -93,7 +148,7 @@ function SuccessContent() {
               <AlertCircle className="h-6 w-6 text-red-600" />
             </div>
             <CardTitle>Payment Verification Failed</CardTitle>
-            <CardDescription>{error || "We couldn't verify your payment. Please contact support."}</CardDescription>
+            <CardDescription>{error}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="rounded-lg bg-muted p-4 text-sm">
@@ -124,27 +179,65 @@ function SuccessContent() {
           <CardDescription>Your payment was successful and your booking has been confirmed.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {error && (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="text-sm">{error}</AlertDescription>
+            </Alert>
+          )}
+
+          {verificationStatus && (
+            <div className="rounded-lg border p-3 space-y-2">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Database className="h-4 w-4" />
+                <span>Database Status</span>
+              </div>
+              <div className="space-y-1 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Booking Record</span>
+                  <span className={verificationStatus.booking ? "text-green-600" : "text-yellow-600"}>
+                    {verificationStatus.booking ? "✓ Saved" : "⏳ Processing"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Payment Record</span>
+                  <span className={verificationStatus.payment ? "text-green-600" : "text-yellow-600"}>
+                    {verificationStatus.payment ? "✓ Saved" : "⏳ Processing"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Customer Record</span>
+                  <span className={verificationStatus.customer ? "text-green-600" : "text-yellow-600"}>
+                    {verificationStatus.customer ? "✓ Saved" : "⏳ Processing"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="rounded-lg bg-muted p-4 space-y-2">
             <div className="flex justify-between">
               <span className="text-sm text-muted-foreground">Service</span>
-              <span className="text-sm font-medium">{booking.serviceName}</span>
+              <span className="text-sm font-medium">{booking?.serviceName}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-muted-foreground">Date</span>
-              <span className="text-sm font-medium">{new Date(booking.date).toLocaleDateString()}</span>
+              <span className="text-sm font-medium">
+                {booking?.date ? new Date(booking.date).toLocaleDateString() : "N/A"}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-muted-foreground">Time</span>
-              <span className="text-sm font-medium">{booking.time}</span>
+              <span className="text-sm font-medium">{booking?.time}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-muted-foreground">Amount Paid</span>
-              <span className="text-sm font-medium">${booking.price}</span>
+              <span className="text-sm font-medium">${booking?.price}</span>
             </div>
           </div>
 
           <p className="text-sm text-muted-foreground text-center">
-            A confirmation email has been sent to {booking.customerEmail}
+            A confirmation email has been sent to {booking?.customerEmail}
           </p>
 
           <Button onClick={() => router.push("/")} className="w-full">
