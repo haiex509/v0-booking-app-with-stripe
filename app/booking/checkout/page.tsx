@@ -58,7 +58,8 @@ function CheckoutForm() {
       const { url } = await response.json()
 
       if (url) {
-        window.location.href = url
+       // window.location.href = url
+        window.open(url)
       } else {
         throw new Error("No checkout URL received")
       }
