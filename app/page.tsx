@@ -83,7 +83,7 @@ export default function Home() {
 
       <div className="container py-12 px-5 space-y-16  mx-auto">
         <div className="text-center space-y-3 max-w-2xl mx-auto">
-          <h1 className="text-5xl font-bold tracking-tight text-foreground">Production Packages9999</h1>
+          <h1 className="text-5xl font-bold tracking-tight text-foreground">Production Packages999900000</h1>
           <p className="text-lg text-muted-foreground">Choose your package and book your session</p>
         </div>
 
