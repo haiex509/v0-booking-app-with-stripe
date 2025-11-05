@@ -46,9 +46,8 @@ function SuccessContent() {
       try {
         console.log("[v0] ===== VERIFYING PAYMENT AND DATA =====")
         console.log("[v0] Session ID:", sessionId)
-        console.log("[v0] Retry attempt:", retryCount)
+        console.log("[v0] Retry attempt:", retryCount + 1)
 
-        // Step 1: Verify payment with Stripe
         const paymentResponse = await fetch(`/api/stripe/checkout?session_id=${sessionId}`)
 
         if (!paymentResponse.ok) {
@@ -65,8 +64,9 @@ function SuccessContent() {
           return
         }
 
-        // Step 2: Verify data was saved to database
-        console.log("[v0] Payment confirmed, verifying database sync...")
+        console.log("[v0] ✓ Payment confirmed as paid")
+
+        console.log("[v0] Verifying database sync...")
 
         const verifyResponse = await fetch(`/api/bookings/verify?session_id=${sessionId}`)
 
@@ -75,7 +75,12 @@ function SuccessContent() {
         }
 
         const verifyData = await verifyResponse.json()
-        console.log("[v0] Database verification result:", verifyData)
+        console.log("[v0] Database verification result:", {
+          booking: !!verifyData.booking,
+          payment: !!verifyData.payment,
+          customer: !!verifyData.customer,
+          synced: verifyData.synced,
+        })
 
         setVerificationStatus({
           booking: !!verifyData.booking,
@@ -84,24 +89,48 @@ function SuccessContent() {
           synced: verifyData.synced,
         })
 
-        // If data is not synced yet and we haven't retried too many times, retry
-        if (!verifyData.synced && retryCount < 5) {
-          console.log("[v0] Data not synced yet, retrying in 2 seconds...")
+        if (!verifyData.synced && retryCount < 10) {
+          console.log(`[v0] Data not fully synced yet, retrying in 2 seconds... (${retryCount + 1}/10)`)
           setTimeout(() => {
             setRetryCount(retryCount + 1)
           }, 2000)
           return
         }
 
-        // If still not synced after retries, show warning but display booking info
-        if (!verifyData.synced) {
-          console.warn("[v0] Data sync incomplete after retries")
-          setError(
-            "Your payment was successful, but we're still processing your booking. You'll receive a confirmation email shortly.",
-          )
+        if (!verifyData.synced || !verifyData.booking) {
+          console.warn("[v0] ⚠ Data sync incomplete after retries, creating booking as fallback...")
+
+          const bookingData = JSON.parse(paymentData.metadata?.bookingData || "{}")
+
+          const fallbackResponse = await fetch("/api/bookings", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ...bookingData,
+              sessionId: sessionId,
+              paymentIntentId: paymentData.payment_intent,
+              status: "confirmed",
+              confirmedAt: new Date().toISOString(),
+            }),
+          })
+
+          if (fallbackResponse.ok) {
+            const fallbackData = await fallbackResponse.json()
+            console.log("[v0] ✓ Booking created via fallback:", fallbackData.booking?.id)
+
+            // Retry verification one more time
+            setTimeout(() => {
+              setRetryCount(retryCount + 1)
+            }, 1000)
+            return
+          } else {
+            console.error("[v0] ✗ Fallback booking creation failed")
+            setError(
+              "Your payment was successful, but we're still processing your booking. You'll receive a confirmation email shortly.",
+            )
+          }
         }
 
-        // Display booking information
         const bookingData = JSON.parse(paymentData.metadata?.bookingData || "{}")
 
         setBooking({
@@ -115,9 +144,13 @@ function SuccessContent() {
         })
 
         console.log("[v0] ===== VERIFICATION COMPLETE =====")
+        console.log("[v0] Booking ID:", verifyData.booking?.id)
+        console.log("[v0] Customer ID:", verifyData.customer?.id)
+        console.log("[v0] Payment ID:", verifyData.payment?.id)
+
         setLoading(false)
       } catch (error) {
-        console.error("[v0] Error verifying payment:", error)
+        console.error("[v0] ✗ Error verifying payment:", error)
         setError(error instanceof Error ? error.message : "Unknown error occurred")
         setLoading(false)
       }
@@ -132,7 +165,7 @@ function SuccessContent() {
         <div className="text-center space-y-4">
           <Loader2 className="h-8 w-8 animate-spin mx-auto" />
           <p className="text-sm text-muted-foreground">
-            {retryCount > 0 ? `Verifying booking data... (${retryCount}/5)` : "Verifying your payment..."}
+            {retryCount > 0 ? `Verifying booking data... (${retryCount}/10)` : "Verifying your payment..."}
           </p>
         </div>
       </div>

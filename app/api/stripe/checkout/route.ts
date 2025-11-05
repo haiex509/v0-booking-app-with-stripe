@@ -37,7 +37,9 @@ export async function POST(req: NextRequest) {
       console.warn("[v0] Using fallback baseUrl:", baseUrl)
     }
 
-    console.log("[v0] Creating checkout session with baseUrl:", baseUrl)
+    console.log("[v0] ===== CREATING CHECKOUT SESSION =====")
+    console.log("[v0] Base URL:", baseUrl)
+    console.log("[v0] Booking data:", JSON.stringify(bookingData, null, 2))
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
@@ -60,35 +62,23 @@ export async function POST(req: NextRequest) {
       customer_email: bookingData.customerEmail,
       metadata: {
         bookingData: JSON.stringify(bookingData),
+        customerName: bookingData.customerName,
+        customerEmail: bookingData.customerEmail,
+        customerPhone: bookingData.customerPhone,
+        bookingDate: bookingData.date,
+        bookingTime: bookingData.time,
+        packageId: bookingData.packageId,
+        serviceName: bookingData.serviceName,
       },
     })
 
-    try {
-      const bookingResponse = await fetch(`${baseUrl}/api/bookings`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...bookingData,
-          sessionId: session.id,
-          paymentIntentId: session.payment_intent,
-          status: "pending",
-        }),
-      })
-
-      if (!bookingResponse.ok) {
-        const errorText = await bookingResponse.text()
-        console.error("[v0] Failed to create booking in database:", errorText)
-      } else {
-        const result = await bookingResponse.json()
-        console.log("[v0] Booking created successfully:", result.booking?.id)
-      }
-    } catch (dbError) {
-      console.error("[v0] Error creating booking:", dbError)
-    }
+    console.log("[v0] ✓ Checkout session created:", session.id)
+    console.log("[v0] Payment Intent:", session.payment_intent)
+    console.log("[v0] Webhook will create booking after payment completes")
 
     return NextResponse.json({ sessionId: session.id, url: session.url })
   } catch (error) {
-    console.error("[v0] Error creating checkout session:", error)
+    console.error("[v0] ✗ Error creating checkout session:", error)
     return NextResponse.json({ error: "Error creating checkout session" }, { status: 500 })
   }
 }
