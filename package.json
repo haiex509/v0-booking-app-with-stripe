@@ -59,7 +59,11 @@
     "react-hook-form": "^7.60.0",
     "react-resizable-panels": "^2.1.7",
     "recharts": "2.15.4",
+<<<<<<< HEAD
     "resend": "latest",
+=======
+    "resend": "^6.4.1",
+>>>>>>> 25140fc (Added resend and fixed booking confirmation)
     "sonner": "^1.7.4",
     "stripe": "latest",
     "tailwind-merge": "^2.5.5",

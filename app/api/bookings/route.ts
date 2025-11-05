@@ -1,6 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server";
 // import { getSupabaseServerService } from "@/lib/supabase/server"
 import { getSupabaseServerService } from "../server";
+import { Resend } from "resend";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req: NextRequest) {
   try {
@@ -68,6 +71,20 @@ export async function POST(req: NextRequest) {
     if (error) {
       console.error("[v0] Error creating booking:", error);
       throw error;
+    }
+
+    const { data: booked, error: errorBooked } = await resend.emails.send({
+      from: `${process.env.EMAIL_FROM_ADDRESS}`,
+      to: [bookingData.customerEmail],
+      subject: "Hub Booked",
+      html: JSON.stringify(bookingData),
+      // react: EmailTemplate({ firstName: 'John' }),
+    });
+
+    console.log(booked);
+
+    if (errorBooked) {
+      console.log(errorBooked);
     }
 
     console.log("[v0] Booking created successfully:", data.id);

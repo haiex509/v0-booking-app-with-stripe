@@ -1,7 +1,16 @@
+<<<<<<< HEAD
 import { type NextRequest, NextResponse } from "next/server"
 import { getSupabaseServerClient } from "@/lib/supabase/server"
 import Stripe from "stripe"
 import { sendCancellationEmail } from "@/lib/email-service"
+=======
+import { type NextRequest, NextResponse } from "next/server";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
+import Stripe from "stripe";
+import { Resend } from "resend";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+>>>>>>> 25140fc (Added resend and fixed booking confirmation)
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2024-12-18.acacia",
@@ -88,6 +97,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Failed to update booking" }, { status: 500 })
     }
 
+<<<<<<< HEAD
     console.log("[v0] Sending cancellation email...")
     await sendCancellationEmail({
       customerName: booking.customer_name,
@@ -101,6 +111,30 @@ export async function POST(req: NextRequest) {
     })
 
     console.log("[v0] Booking cancelled successfully:", bookingId)
+=======
+    const { data: booked, error: errorBooked } = await resend.emails.send({
+      from: `${process.env.EMAIL_FROM_ADDRESS}`,
+      to: [booking?.customer_email],
+      subject: "Cancel Boocking",
+      html: JSON.stringify({
+        status: refundAmount > 0 ? "refunded" : "cancelled",
+        cancelled_at: new Date().toISOString(),
+        cancelled_by: user.id,
+        cancellation_reason: reason,
+        refund_amount: refundAmount,
+        refund_status: refundStatus,
+      }),
+      // react: EmailTemplate({ firstName: 'John' }),
+    });
+
+    console.log(booked);
+
+    if (errorBooked) {
+      console.log(errorBooked);
+    }
+
+    console.log("[v0] Booking cancelled successfully:", bookingId);
+>>>>>>> 25140fc (Added resend and fixed booking confirmation)
 
     return NextResponse.json({
       success: true,

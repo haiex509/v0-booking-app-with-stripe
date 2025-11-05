@@ -39,10 +39,10 @@ import { CancelBookingDialog } from "./cancel-booking-dialog";
 interface Booking {
   id: string;
   booking_date: string;
-  start_time: string;
+  booking_time: string;
   end_time: string;
   status: string;
-  amount: number;
+  price: number;
   customer_name: string;
   customer_email: string;
   customer_phone: string;
@@ -81,9 +81,11 @@ export function BookingsView() {
     setLoading(true);
     try {
       const supabase = getSupabaseBrowserClient();
-      const { data, error } = await supabase.from("bookings").select("*");
-      // .order("booking_date", { ascending: false })
-      // .order("start_time", { ascending: false })
+      const { data, error } = await supabase
+        .from("bookings")
+        .select("*")
+        .order("booking_date", { ascending: false })
+        .order("booking_time", { ascending: false });
 
       if (error) throw error;
 
@@ -250,7 +252,7 @@ export function BookingsView() {
                 .filter(
                   (b) => b.status === "confirmed" || b.status === "completed"
                 )
-                .reduce((sum, b) => sum + (b.amount || 0), 0)
+                .reduce((sum, b) => sum + (b?.price || 0), 0)
                 .toFixed(2)}
             </div>
           </CardContent>
@@ -351,19 +353,17 @@ export function BookingsView() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span>{formatDate(booking?.booking_date)}</span>
+                        <span>{formatDate(booking.booking_date)}</span>
                       </div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Clock className="h-3 w-3" />
-                        <span>
-                          {formatTime(booking?.booking_time)}
-                        </span>
+                        <span>{formatTime(booking?.booking_time)}</span>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="font-medium">
-                      ${booking.amount?.toFixed(2) || "0.00"}
+                      ${booking?.price?.toFixed(2) || "0.00"}
                     </div>
                     {booking.refund_amount && (
                       <div className="text-sm text-destructive">

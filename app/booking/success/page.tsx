@@ -218,7 +218,7 @@ function SuccessContent() {
   }
 
   return (
-    <div className="container flex items-center justify-center min-h-screen">
+    <div className=" flex items-center justify-center min-h-screen">
       <Card className="max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
