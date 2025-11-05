@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import { useState } from "react"
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -8,42 +8,49 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Loader2, AlertTriangle } from "lucide-react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Loader2, AlertTriangle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface CancelBookingDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   booking: {
-    id: string
-    customer_name: string
-    booking_date: string
-    start_time: string
-    amount: number
-    package_name: string
-  }
-  onSuccess: () => void
+    id: string;
+    customer_name: string;
+    booking_date: string;
+    start_time: string;
+    amount: number;
+    package_name: string;
+  };
+  onSuccess: () => void;
 }
 
-export function CancelBookingDialog({ open, onOpenChange, booking, onSuccess }: CancelBookingDialogProps) {
-  const [refundType, setRefundType] = useState<"full" | "partial" | "none">("full")
-  const [reason, setReason] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
+export function CancelBookingDialog({
+  open,
+  onOpenChange,
+  booking,
+  onSuccess,
+}: CancelBookingDialogProps) {
+  const [refundType, setRefundType] = useState<"full" | "partial" | "none">(
+    "full"
+  );
+  const [reason, setReason] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleCancel = async () => {
     if (!reason.trim()) {
-      setError("Please provide a cancellation reason")
-      return
+      setError("Please provide a cancellation reason");
+      return;
     }
 
-    setLoading(true)
-    setError("")
+    setLoading(true);
+    setError("");
 
     try {
       const response = await fetch("/api/bookings/cancel", {
@@ -54,47 +61,48 @@ export function CancelBookingDialog({ open, onOpenChange, booking, onSuccess }: 
           refundType,
           reason: reason.trim(),
         }),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to cancel booking")
+        throw new Error(data.error || "Failed to cancel booking");
       }
 
-      console.log("[v0] Booking cancelled successfully:", data)
-      onSuccess()
-      onOpenChange(false)
-      resetForm()
+      console.log("[v0] Booking cancelled successfully:", data);
+      onSuccess();
+      onOpenChange(false);
+      resetForm();
     } catch (err: any) {
-      console.error("[v0] Error cancelling booking:", err)
-      setError(err.message || "Failed to cancel booking")
+      console.error("[v0] Error cancelling booking:", err);
+      setError(err.message || "Failed to cancel booking");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const resetForm = () => {
-    setRefundType("full")
-    setReason("")
-    setError("")
-  }
+    setRefundType("full");
+    setReason("");
+    setError("");
+  };
 
-  const isPastBooking = new Date(booking.booking_date) < new Date()
+  const isPastBooking = new Date(booking.booking_date) < new Date();
 
   return (
     <Dialog
       open={open}
       onOpenChange={(open) => {
-        onOpenChange(open)
-        if (!open) resetForm()
+        onOpenChange(open);
+        if (!open) resetForm();
       }}
     >
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Cancel Booking</DialogTitle>
           <DialogDescription>
-            Cancel booking for {booking.customer_name} on {new Date(booking.booking_date).toLocaleDateString()}
+            Cancel booking for {booking.customer_name} on{" "}
+            {new Date(booking.booking_date).toLocaleDateString()}
           </DialogDescription>
         </DialogHeader>
 
@@ -103,24 +111,28 @@ export function CancelBookingDialog({ open, onOpenChange, booking, onSuccess }: 
             <Alert>
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
-                This booking date has passed. You can still cancel and process refunds as needed.
+                This booking date has passed. You can still cancel and process
+                refunds as needed.
               </AlertDescription>
             </Alert>
           )}
 
           <div className="space-y-2">
             <Label>Refund Option</Label>
-            <RadioGroup value={refundType} onValueChange={(value: any) => setRefundType(value)}>
+            <RadioGroup
+              value={refundType}
+              onValueChange={(value: any) => setRefundType(value)}
+            >
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="full" id="full" />
                 <Label htmlFor="full" className="font-normal cursor-pointer">
-                  Full Refund (${booking.amount.toFixed(2)})
+                  Full Refund (${booking?.amount?.toFixed(2)})
                 </Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="partial" id="partial" />
                 <Label htmlFor="partial" className="font-normal cursor-pointer">
-                  Partial Refund (50% - ${(booking.amount * 0.5).toFixed(2)})
+                  Partial Refund (50% - ${(booking?.amount * 0.5).toFixed(2)})
                 </Label>
               </div>
               <div className="flex items-center space-x-2">
@@ -152,10 +164,18 @@ export function CancelBookingDialog({ open, onOpenChange, booking, onSuccess }: 
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={loading}
+          >
             Cancel
           </Button>
-          <Button variant="destructive" onClick={handleCancel} disabled={loading || !reason.trim()}>
+          <Button
+            variant="destructive"
+            onClick={handleCancel}
+            disabled={loading || !reason.trim()}
+          >
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -168,5 +188,5 @@ export function CancelBookingDialog({ open, onOpenChange, booking, onSuccess }: 
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

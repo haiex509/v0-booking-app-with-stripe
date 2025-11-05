@@ -1,12 +1,13 @@
-import { type NextRequest, NextResponse } from "next/server"
-import { getSupabaseServerClient } from "@/lib/supabase/server"
+import { type NextRequest, NextResponse } from "next/server";
+// import { getSupabaseServerService } from "@/lib/supabase/server"
+import { getSupabaseServerService } from "../server";
 
 export async function POST(req: NextRequest) {
   try {
-    const bookingData = await req.json()
-    const supabase = await getSupabaseServerClient()
+    const bookingData = await req.json();
+    const supabase = await getSupabaseServerService();
 
-    let customerId: string | null = null
+    let customerId: string | null = null;
 
     try {
       // Check if customer exists
@@ -14,11 +15,11 @@ export async function POST(req: NextRequest) {
         .from("customers")
         .select("id")
         .eq("email", bookingData.customerEmail)
-        .single()
+        .single();
 
       if (existingCustomer) {
-        customerId = existingCustomer.id
-        console.log("[v0] Found existing customer:", customerId)
+        customerId = existingCustomer.id;
+        console.log("[v0] Found existing customer:", customerId);
       } else {
         // Create new customer
         const { data: newCustomer, error: customerError } = await supabase
@@ -31,17 +32,17 @@ export async function POST(req: NextRequest) {
             },
           ])
           .select()
-          .single()
+          .single();
 
         if (customerError) {
-          console.error("[v0] Error creating customer:", customerError)
+          console.error("[v0] Error creating customer:", customerError);
         } else {
-          customerId = newCustomer.id
-          console.log("[v0] Created new customer:", customerId)
+          customerId = newCustomer.id;
+          console.log("[v0] Created new customer:", customerId);
         }
       }
     } catch (customerErr) {
-      console.error("[v0] Error handling customer:", customerErr)
+      console.error("[v0] Error handling customer:", customerErr);
     }
 
     const { data, error } = await supabase
@@ -62,27 +63,35 @@ export async function POST(req: NextRequest) {
         },
       ])
       .select()
-      .single()
+      .single();
 
     if (error) {
-      console.error("[v0] Error creating booking:", error)
-      throw error
+      console.error("[v0] Error creating booking:", error);
+      throw error;
     }
 
-    console.log("[v0] Booking created successfully:", data.id)
-    return NextResponse.json({ success: true, booking: data })
+    console.log("[v0] Booking created successfully:", data.id);
+    return NextResponse.json({ success: true, booking: data });
   } catch (error) {
-    console.error("[v0] Error in POST /api/bookings:", error)
-    return NextResponse.json({ error: "Failed to create booking" }, { status: 500 })
+    console.error("[v0] Error in POST /api/bookings:", error);
+    return NextResponse.json(
+      { error: "Failed to create booking" },
+      { status: 500 }
+    );
   }
 }
 
 export async function PATCH(req: NextRequest) {
   try {
-    const { paymentIntentId, status } = await req.json()
-    const supabase = await getSupabaseServerClient()
+    const { paymentIntentId, status } = await req.json();
+    const supabase = await getSupabaseServerService();
 
-    console.log("[v0] Updating booking with payment_intent_id:", paymentIntentId, "to status:", status)
+    console.log(
+      "[v0] Updating booking with payment_intent_id:",
+      paymentIntentId,
+      "to status:",
+      status
+    );
 
     const { data, error } = await supabase
       .from("bookings")
@@ -92,33 +101,39 @@ export async function PATCH(req: NextRequest) {
       })
       .eq("payment_intent_id", paymentIntentId)
       .select()
-      .single()
+      .single();
 
     if (error) {
-      console.error("[v0] Error updating booking:", error)
-      throw error
+      console.error("[v0] Error updating booking:", error);
+      throw error;
     }
 
     if (status === "confirmed" && data.customer_id) {
       try {
-        const { error: statsError } = await supabase.rpc("update_customer_stats", {
-          p_customer_id: data.customer_id,
-        })
+        const { error: statsError } = await supabase.rpc(
+          "update_customer_stats",
+          {
+            p_customer_id: data.customer_id,
+          }
+        );
 
         if (statsError) {
-          console.error("[v0] Error updating customer stats:", statsError)
+          console.error("[v0] Error updating customer stats:", statsError);
         } else {
-          console.log("[v0] Customer stats updated for:", data.customer_id)
+          console.log("[v0] Customer stats updated for:", data.customer_id);
         }
       } catch (statsErr) {
-        console.error("[v0] Error calling update_customer_stats:", statsErr)
+        console.error("[v0] Error calling update_customer_stats:", statsErr);
       }
     }
 
-    console.log("[v0] Booking updated successfully:", data.id)
-    return NextResponse.json({ success: true, booking: data })
+    console.log("[v0] Booking updated successfully:", data.id);
+    return NextResponse.json({ success: true, booking: data });
   } catch (error) {
-    console.error("[v0] Error in PATCH /api/bookings:", error)
-    return NextResponse.json({ error: "Failed to update booking" }, { status: 500 })
+    console.error("[v0] Error in PATCH /api/bookings:", error);
+    return NextResponse.json(
+      { error: "Failed to update booking" },
+      { status: 500 }
+    );
   }
 }

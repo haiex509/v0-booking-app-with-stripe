@@ -1,165 +1,200 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { getSupabaseBrowserClient } from "@/lib/supabase/client"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Calendar, Clock, DollarSign, Mail, Phone, User, Search, RefreshCw, XCircle, CheckCircle } from "lucide-react"
-import { usePermissions } from "@/hooks/use-permissions"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { CancelBookingDialog } from "./cancel-booking-dialog"
+import { useState, useEffect } from "react";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Calendar,
+  Clock,
+  DollarSign,
+  Mail,
+  Phone,
+  User,
+  Search,
+  RefreshCw,
+  XCircle,
+  CheckCircle,
+} from "lucide-react";
+import { usePermissions } from "@/hooks/use-permissions";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CancelBookingDialog } from "./cancel-booking-dialog";
 
 interface Booking {
-  id: string
-  booking_date: string
-  start_time: string
-  end_time: string
-  status: string
-  amount: number
-  customer_name: string
-  customer_email: string
-  customer_phone: string
-  package_name: string
-  payment_intent_id: string
-  session_id: string
-  created_at: string
-  cancelled_at?: string
-  cancellation_reason?: string
-  refund_amount?: number
-  refund_status?: string
+  id: string;
+  booking_date: string;
+  start_time: string;
+  end_time: string;
+  status: string;
+  amount: number;
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string;
+  package_name: string;
+  payment_intent_id: string;
+  session_id: string;
+  created_at: string;
+  cancelled_at?: string;
+  cancellation_reason?: string;
+  refund_amount?: number;
+  refund_status?: string;
 }
 
 export function BookingsView() {
-  const [bookings, setBookings] = useState<Booking[]>([])
-  const [filteredBookings, setFilteredBookings] = useState<Booking[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState<string>("all")
-  const [dateFilter, setDateFilter] = useState<string>("all")
-  const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
-  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
-  const { hasPermission } = usePermissions()
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [filteredBookings, setFilteredBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [dateFilter, setDateFilter] = useState<string>("all");
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const { hasPermission } = usePermissions();
 
-  const canManageBookings = hasPermission("manage_packages")
-
-  useEffect(() => {
-    loadBookings()
-  }, [])
+  const canManageBookings = hasPermission("manage_packages");
 
   useEffect(() => {
-    applyFilters()
-  }, [bookings, searchTerm, statusFilter, dateFilter])
+    loadBookings();
+  }, []);
+
+  useEffect(() => {
+    applyFilters();
+  }, [bookings, searchTerm, statusFilter, dateFilter]);
 
   const loadBookings = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const supabase = getSupabaseBrowserClient()
-      const { data, error } = await supabase
-        .from("bookings")
-        .select("*")
-        .order("booking_date", { ascending: false })
-        .order("start_time", { ascending: false })
+      const supabase = getSupabaseBrowserClient();
+      const { data, error } = await supabase.from("bookings").select("*");
+      // .order("booking_date", { ascending: false })
+      // .order("start_time", { ascending: false })
 
-      if (error) throw error
+      if (error) throw error;
 
-      console.log("[v0] Loaded bookings from database:", data?.length || 0)
-      setBookings(data || [])
+      console.log("[v0] Loaded bookings from database:", data?.length || 0);
+      setBookings(data || []);
     } catch (error) {
-      console.error("[v0] Error loading bookings:", error)
-      setBookings([])
+      console.error("[v0] Error loading bookings:", error);
+      setBookings([]);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const applyFilters = () => {
-    let result = [...bookings]
+    let result = [...bookings];
 
     // Search filter
     if (searchTerm) {
-      const term = searchTerm.toLowerCase()
+      const term = searchTerm.toLowerCase();
       result = result.filter(
         (booking) =>
           booking.customer_name?.toLowerCase().includes(term) ||
           booking.customer_email?.toLowerCase().includes(term) ||
           booking.customer_phone?.includes(term) ||
-          booking.package_name?.toLowerCase().includes(term),
-      )
+          booking.package_name?.toLowerCase().includes(term)
+      );
     }
 
     // Status filter
     if (statusFilter !== "all") {
-      result = result.filter((booking) => booking.status === statusFilter)
+      result = result.filter((booking) => booking.status === statusFilter);
     }
 
     // Date filter
     if (dateFilter !== "all") {
-      const now = new Date()
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
       result = result.filter((booking) => {
-        const bookingDate = new Date(booking.booking_date)
-        const bookingDay = new Date(bookingDate.getFullYear(), bookingDate.getMonth(), bookingDate.getDate())
+        const bookingDate = new Date(booking.booking_date);
+        const bookingDay = new Date(
+          bookingDate.getFullYear(),
+          bookingDate.getMonth(),
+          bookingDate.getDate()
+        );
 
         switch (dateFilter) {
           case "upcoming":
-            return bookingDay >= today
+            return bookingDay >= today;
           case "past":
-            return bookingDay < today
+            return bookingDay < today;
           case "today":
-            return bookingDay.getTime() === today.getTime()
+            return bookingDay.getTime() === today.getTime();
           default:
-            return true
+            return true;
         }
-      })
+      });
     }
 
-    setFilteredBookings(result)
-  }
+    setFilteredBookings(result);
+  };
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
+    const variants: Record<
+      string,
+      {
+        variant: "default" | "secondary" | "destructive" | "outline";
+        label: string;
+      }
+    > = {
       pending: { variant: "secondary", label: "Pending" },
       confirmed: { variant: "default", label: "Confirmed" },
       completed: { variant: "outline", label: "Completed" },
       cancelled: { variant: "destructive", label: "Cancelled" },
       refunded: { variant: "destructive", label: "Refunded" },
-    }
-    const config = variants[status] || { variant: "outline" as const, label: status }
-    return <Badge variant={config.variant}>{config.label}</Badge>
-  }
+    };
+    const config = variants[status] || {
+      variant: "outline" as const,
+      label: status,
+    };
+    return <Badge variant={config.variant}>{config.label}</Badge>;
+  };
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
-    })
-  }
+    });
+  };
 
   const formatTime = (timeStr: string) => {
-    if (!timeStr) return ""
-    return timeStr
-  }
+    if (!timeStr) return "";
+    return timeStr;
+  };
 
   const handleCancelClick = (booking: Booking) => {
-    setSelectedBooking(booking)
-    setCancelDialogOpen(true)
-  }
+    setSelectedBooking(booking);
+    setCancelDialogOpen(true);
+  };
 
   const handleCancelSuccess = () => {
-    loadBookings()
-  }
+    loadBookings();
+  };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
         <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
-    )
+    );
   }
 
   return (
@@ -168,7 +203,9 @@ export function BookingsView() {
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Bookings
+            </CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -181,7 +218,9 @@ export function BookingsView() {
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{bookings.filter((b) => b.status === "confirmed").length}</div>
+            <div className="text-2xl font-bold">
+              {bookings.filter((b) => b.status === "confirmed").length}
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -191,7 +230,11 @@ export function BookingsView() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {bookings.filter((b) => b.status === "cancelled" || b.status === "refunded").length}
+              {
+                bookings.filter(
+                  (b) => b.status === "cancelled" || b.status === "refunded"
+                ).length
+              }
             </div>
           </CardContent>
         </Card>
@@ -204,7 +247,9 @@ export function BookingsView() {
             <div className="text-2xl font-bold">
               $
               {bookings
-                .filter((b) => b.status === "confirmed" || b.status === "completed")
+                .filter(
+                  (b) => b.status === "confirmed" || b.status === "completed"
+                )
                 .reduce((sum, b) => sum + (b.amount || 0), 0)
                 .toFixed(2)}
             </div>
@@ -271,7 +316,10 @@ export function BookingsView() {
           <TableBody>
             {filteredBookings.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground">
+                <TableCell
+                  colSpan={6}
+                  className="text-center text-muted-foreground"
+                >
                   No bookings found
                 </TableCell>
               </TableRow>
@@ -282,7 +330,9 @@ export function BookingsView() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <User className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">{booking.customer_name}</span>
+                        <span className="font-medium">
+                          {booking.customer_name}
+                        </span>
                       </div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Mail className="h-3 w-3" />
@@ -306,25 +356,36 @@ export function BookingsView() {
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Clock className="h-3 w-3" />
                         <span>
-                          {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
+                          {formatTime(booking.start_time)} -{" "}
+                          {formatTime(booking.end_time)}
                         </span>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="font-medium">${booking.amount?.toFixed(2) || "0.00"}</div>
+                    <div className="font-medium">
+                      ${booking.amount?.toFixed(2) || "0.00"}
+                    </div>
                     {booking.refund_amount && (
-                      <div className="text-sm text-destructive">Refunded: ${booking.refund_amount.toFixed(2)}</div>
+                      <div className="text-sm text-destructive">
+                        Refunded: ${booking.refund_amount.toFixed(2)}
+                      </div>
                     )}
                   </TableCell>
                   <TableCell>{getStatusBadge(booking.status)}</TableCell>
                   <TableCell>
                     <div className="flex gap-2">
-                      {canManageBookings && booking.status !== "cancelled" && booking.status !== "refunded" && (
-                        <Button variant="outline" size="sm" onClick={() => handleCancelClick(booking)}>
-                          Cancel
-                        </Button>
-                      )}
+                      {canManageBookings &&
+                        booking.status !== "cancelled" &&
+                        booking.status !== "refunded" && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleCancelClick(booking)}
+                          >
+                            Cancel
+                          </Button>
+                        )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -344,5 +405,5 @@ export function BookingsView() {
         />
       )}
     </div>
-  )
+  );
 }

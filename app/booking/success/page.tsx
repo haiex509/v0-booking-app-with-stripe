@@ -1,108 +1,150 @@
-"use client"
+"use client";
 
-import { useEffect, useState, Suspense } from "react"
-import { useSearchParams, useRouter } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { CheckCircle2, Loader2, AlertCircle, Database } from "lucide-react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useEffect, useState, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { CheckCircle2, Loader2, AlertCircle, Database } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 type BookingDisplay = {
-  id: string
-  serviceName: string
-  date: string
-  time: string
-  price: number
-  customerEmail: string
-  customerName: string
-}
+  id: string;
+  serviceName: string;
+  date: string;
+  time: string;
+  price: number;
+  customerEmail: string;
+  customerName: string;
+};
 
 type VerificationStatus = {
-  booking: boolean
-  payment: boolean
-  customer: boolean
-  synced: boolean
-}
+  booking: boolean;
+  payment: boolean;
+  customer: boolean;
+  synced: boolean;
+};
 
 function SuccessContent() {
-  const searchParams = useSearchParams()
-  const router = useRouter()
-  const [booking, setBooking] = useState<BookingDisplay | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [verificationStatus, setVerificationStatus] = useState<VerificationStatus | null>(null)
-  const [retryCount, setRetryCount] = useState(0)
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const [booking, setBooking] = useState<BookingDisplay | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [verificationStatus, setVerificationStatus] =
+    useState<VerificationStatus | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
-    const sessionId = searchParams.get("session_id")
+    const sessionId = searchParams.get("session_id");
 
     if (!sessionId) {
-      console.error("[v0] No session_id in URL")
-      router.push("/")
-      return
+      console.error("[v0] No session_id in URL");
+      router.push("/");
+      return;
     }
 
     const verifyPaymentAndData = async () => {
       try {
-        console.log("[v0] ===== VERIFYING PAYMENT AND DATA =====")
-        console.log("[v0] Session ID:", sessionId)
-        console.log("[v0] Retry attempt:", retryCount)
+        console.log("[v0] ===== VERIFYING PAYMENT AND DATA =====");
+        console.log("[v0] Session ID:", sessionId);
+        console.log("[v0] Retry attempt:", retryCount);
 
         // Step 1: Verify payment with Stripe
-        const paymentResponse = await fetch(`/api/stripe/checkout?session_id=${sessionId}`)
+        const paymentResponse = await fetch(
+          `/api/stripe/checkout?session_id=${sessionId}`
+        );
 
         if (!paymentResponse.ok) {
-          throw new Error(`Failed to verify payment: ${paymentResponse.statusText}`)
+          throw new Error(
+            `Failed to verify payment: ${paymentResponse.statusText}`
+          );
         }
 
-        const paymentData = await paymentResponse.json()
-        console.log("[v0] Payment status:", paymentData.payment_status)
+        const paymentData = await paymentResponse.json();
+        console.log("[v0] Payment status:", paymentData.payment_status);
 
         if (paymentData.payment_status !== "paid") {
-          console.error("[v0] Payment not completed. Status:", paymentData.payment_status)
-          setError(`Payment status: ${paymentData.payment_status}. Please contact support if you were charged.`)
-          setLoading(false)
-          return
+          console.error(
+            "[v0] Payment not completed. Status:",
+            paymentData.payment_status
+          );
+          setError(
+            `Payment status: ${paymentData.payment_status}. Please contact support if you were charged.`
+          );
+          setLoading(false);
+          return;
         }
 
         // Step 2: Verify data was saved to database
-        console.log("[v0] Payment confirmed, verifying database sync...")
+        console.log("[v0] Payment confirmed, verifying database sync...");
 
-        const verifyResponse = await fetch(`/api/bookings/verify?session_id=${sessionId}`)
+        const verifyResponse = await fetch(
+          `/api/bookings/verify?session_id=${sessionId}`
+        );
 
         if (!verifyResponse.ok) {
-          throw new Error(`Failed to verify booking data: ${verifyResponse.statusText}`)
+          throw new Error(
+            `Failed to verify booking data: ${verifyResponse.statusText}`
+          );
         }
 
-        const verifyData = await verifyResponse.json()
-        console.log("[v0] Database verification result:", verifyData)
+        const verifyData = await verifyResponse.json();
+        console.log("[v0] Database verification result:", verifyData);
 
         setVerificationStatus({
           booking: !!verifyData.booking,
           payment: !!verifyData.payment,
           customer: !!verifyData.customer,
           synced: verifyData.synced,
-        })
+        });
 
-        // If data is not synced yet and we haven't retried too many times, retry
-        if (!verifyData.synced && retryCount < 5) {
-          console.log("[v0] Data not synced yet, retrying in 2 seconds...")
-          setTimeout(() => {
-            setRetryCount(retryCount + 1)
-          }, 2000)
-          return
-        }
+        // // If data is not synced yet and we haven't retried too many times, retry
+        // if (!verifyData.synced && retryCount < 5) {
+        //   console.log("[v0] Data not synced yet, retrying in 2 seconds...");
+        //   setTimeout(() => {
+        //     setRetryCount(retryCount + 1);
+        //   }, 2000);
+        //   return;
+        // }
 
-        // If still not synced after retries, show warning but display booking info
-        if (!verifyData.synced) {
-          console.warn("[v0] Data sync incomplete after retries")
-          setError(
-            "Your payment was successful, but we're still processing your booking. You'll receive a confirmation email shortly.",
-          )
-        }
+        // // If still not synced after retries, show warning but display booking info
+        // if (!verifyData.synced) {
+        //   console.warn("[v0] Data sync incomplete after retries");
+        //   setError(
+        //     "Your payment was successful, but we're still processing your booking. You'll receive a confirmation email shortly."
+        //   );
+        // }
 
         // Display booking information
-        const bookingData = JSON.parse(paymentData.metadata?.bookingData || "{}")
+        const bookingData = JSON.parse(
+          paymentData.metadata?.bookingData || "{}"
+        );
+
+        // Step 1: Verify payment with Stripe
+        const bookingResponse = await fetch(`/api/bookings`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            id: verifyData.booking?.id || sessionId,
+            serviceName: bookingData.serviceName || "Production Service",
+            date: verifyData.booking?.booking_date || bookingData.date,
+            time: verifyData.booking?.booking_time || bookingData.time,
+            price: verifyData.booking?.price || bookingData.price,
+            customerEmail:
+              verifyData.customer?.email ||
+              paymentData.customerEmail ||
+              bookingData.customerEmail,
+            customerName: verifyData.customer?.name || bookingData.customerName,
+          }),
+        });
 
         setBooking({
           id: verifyData.booking?.id || sessionId,
@@ -110,21 +152,26 @@ function SuccessContent() {
           date: verifyData.booking?.booking_date || bookingData.date,
           time: verifyData.booking?.booking_time || bookingData.time,
           price: verifyData.booking?.price || bookingData.price,
-          customerEmail: verifyData.customer?.email || paymentData.customerEmail || bookingData.customerEmail,
+          customerEmail:
+            verifyData.customer?.email ||
+            paymentData.customerEmail ||
+            bookingData.customerEmail,
           customerName: verifyData.customer?.name || bookingData.customerName,
-        })
+        });
 
-        console.log("[v0] ===== VERIFICATION COMPLETE =====")
-        setLoading(false)
+        console.log("[v0] ===== VERIFICATION COMPLETE =====");
+        setLoading(false);
       } catch (error) {
-        console.error("[v0] Error verifying payment:", error)
-        setError(error instanceof Error ? error.message : "Unknown error occurred")
-        setLoading(false)
+        console.error("[v0] Error verifying payment:", error);
+        setError(
+          error instanceof Error ? error.message : "Unknown error occurred"
+        );
+        setLoading(false);
       }
-    }
+    };
 
-    verifyPaymentAndData()
-  }, [searchParams, router, retryCount])
+    verifyPaymentAndData();
+  }, [searchParams, router, retryCount]);
 
   if (loading) {
     return (
@@ -132,11 +179,13 @@ function SuccessContent() {
         <div className="text-center space-y-4">
           <Loader2 className="h-8 w-8 animate-spin mx-auto" />
           <p className="text-sm text-muted-foreground">
-            {retryCount > 0 ? `Verifying booking data... (${retryCount}/5)` : "Verifying your payment..."}
+            {retryCount > 0
+              ? `Verifying booking data... (${retryCount}/5)`
+              : "Verifying your payment..."}
           </p>
         </div>
       </div>
-    )
+    );
   }
 
   if (error && !booking) {
@@ -165,7 +214,7 @@ function SuccessContent() {
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   return (
@@ -176,7 +225,9 @@ function SuccessContent() {
             <CheckCircle2 className="h-6 w-6 text-green-600" />
           </div>
           <CardTitle>Booking Confirmed!</CardTitle>
-          <CardDescription>Your payment was successful and your booking has been confirmed.</CardDescription>
+          <CardDescription>
+            Your payment was successful and your booking has been confirmed.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {error && (
@@ -195,19 +246,37 @@ function SuccessContent() {
               <div className="space-y-1 text-xs">
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Booking Record</span>
-                  <span className={verificationStatus.booking ? "text-green-600" : "text-yellow-600"}>
+                  <span
+                    className={
+                      verificationStatus.booking
+                        ? "text-green-600"
+                        : "text-yellow-600"
+                    }
+                  >
                     {verificationStatus.booking ? "✓ Saved" : "⏳ Processing"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Payment Record</span>
-                  <span className={verificationStatus.payment ? "text-green-600" : "text-yellow-600"}>
+                  <span
+                    className={
+                      verificationStatus.payment
+                        ? "text-green-600"
+                        : "text-yellow-600"
+                    }
+                  >
                     {verificationStatus.payment ? "✓ Saved" : "⏳ Processing"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Customer Record</span>
-                  <span className={verificationStatus.customer ? "text-green-600" : "text-yellow-600"}>
+                  <span
+                    className={
+                      verificationStatus.customer
+                        ? "text-green-600"
+                        : "text-yellow-600"
+                    }
+                  >
                     {verificationStatus.customer ? "✓ Saved" : "⏳ Processing"}
                   </span>
                 </div>
@@ -218,12 +287,16 @@ function SuccessContent() {
           <div className="rounded-lg bg-muted p-4 space-y-2">
             <div className="flex justify-between">
               <span className="text-sm text-muted-foreground">Service</span>
-              <span className="text-sm font-medium">{booking?.serviceName}</span>
+              <span className="text-sm font-medium">
+                {booking?.serviceName}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-muted-foreground">Date</span>
               <span className="text-sm font-medium">
-                {booking?.date ? new Date(booking.date).toLocaleDateString() : "N/A"}
+                {booking?.date
+                  ? new Date(booking.date).toLocaleDateString()
+                  : "N/A"}
               </span>
             </div>
             <div className="flex justify-between">
@@ -246,7 +319,7 @@ function SuccessContent() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
 
 export default function SuccessPage() {
@@ -260,5 +333,5 @@ export default function SuccessPage() {
     >
       <SuccessContent />
     </Suspense>
-  )
+  );
 }
