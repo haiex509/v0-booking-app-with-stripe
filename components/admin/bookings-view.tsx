@@ -356,8 +356,7 @@ export function BookingsView() {
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Clock className="h-3 w-3" />
                         <span>
-                          {formatTime(booking.start_time)} -{" "}
-                          {formatTime(booking.end_time)}
+                          {formatTime(booking.booking_time)}
                         </span>
                       </div>
                     </div>
