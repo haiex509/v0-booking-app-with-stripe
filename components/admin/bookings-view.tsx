@@ -351,12 +351,12 @@ export function BookingsView() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span>{formatDate(booking.booking_date)}</span>
+                        <span>{formatDate(booking?.booking_date)}</span>
                       </div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Clock className="h-3 w-3" />
                         <span>
-                          {formatTime(booking.booking_time)}
+                          {formatTime(booking?.booking_time)}
                         </span>
                       </div>
                     </div>
