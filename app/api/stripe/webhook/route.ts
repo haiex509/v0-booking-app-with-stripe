@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import Stripe from "stripe"
 import { getSupabaseServerClient } from "@/lib/supabase/server"
+import { sendBookingConfirmation, sendPaymentFailedEmail, sendRefundNotification } from "@/lib/email-service"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2024-12-18.acacia",
@@ -120,6 +121,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       .maybeSingle()
 
     let bookingId: string
+    let finalBooking: any
 
     if (existingBooking) {
       console.log("[v0] Found existing booking:", existingBooking.id, "Status:", existingBooking.status)
@@ -142,6 +144,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       }
 
       bookingId = updatedBooking.id
+      finalBooking = updatedBooking
       console.log("[v0] ✓ Updated booking to confirmed:", bookingId)
     } else {
       console.log("[v0] No existing booking found, creating new one...")
@@ -173,6 +176,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       }
 
       bookingId = newBooking.id
+      finalBooking = newBooking
       console.log("[v0] ✓ Created new booking:", bookingId)
     }
 
@@ -219,6 +223,17 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       }
     }
 
+    console.log("[v0] Sending booking confirmation email...")
+    await sendBookingConfirmation({
+      customerName: customerName,
+      customerEmail: customerEmail,
+      serviceName: bookingData.serviceName || "Booking Service",
+      bookingDate: finalBooking.booking_date,
+      bookingTime: finalBooking.booking_time,
+      price: finalBooking.price,
+      bookingId: bookingId,
+    })
+
     console.log("[v0] ===== CHECKOUT COMPLETED SUCCESSFULLY =====")
     console.log("[v0] Booking ID:", bookingId)
     console.log("[v0] Customer ID:", customerId)
@@ -249,10 +264,25 @@ async function handlePaymentFailed(paymentIntent: Stripe.PaymentIntent) {
   // Update payment and booking status
   await supabase.from("payments").update({ status: "failed" }).eq("stripe_payment_intent_id", paymentIntent.id)
 
-  await supabase
+  const { data: booking } = await supabase
     .from("bookings")
     .update({ status: "cancelled", cancellation_reason: "Payment failed" })
     .eq("payment_intent_id", paymentIntent.id)
+    .select()
+    .single()
+
+  if (booking) {
+    console.log("[v0] Sending payment failed email...")
+    await sendPaymentFailedEmail({
+      customerName: booking.customer_name,
+      customerEmail: booking.customer_email,
+      serviceName: "Booking Service",
+      bookingDate: booking.booking_date,
+      bookingTime: booking.booking_time,
+      price: booking.price,
+      bookingId: booking.id,
+    })
+  }
 
   console.log("[v0] Payment failed:", paymentIntent.id)
 }
@@ -267,6 +297,26 @@ async function handleRefund(charge: Stripe.Charge) {
       .from("payments")
       .update({ status: "refunded" })
       .eq("stripe_payment_intent_id", charge.payment_intent as string)
+
+    const { data: booking } = await supabase
+      .from("bookings")
+      .select("*")
+      .eq("payment_intent_id", charge.payment_intent as string)
+      .single()
+
+    if (booking) {
+      console.log("[v0] Sending refund notification email...")
+      await sendRefundNotification({
+        customerName: booking.customer_name,
+        customerEmail: booking.customer_email,
+        serviceName: "Booking Service",
+        bookingDate: booking.booking_date,
+        bookingTime: booking.booking_time,
+        refundAmount: booking.refund_amount || booking.price,
+        originalAmount: booking.price,
+        bookingId: booking.id,
+      })
+    }
 
     console.log("[v0] Refund processed for payment:", charge.payment_intent)
   }
