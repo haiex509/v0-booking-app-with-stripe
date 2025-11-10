@@ -98,9 +98,9 @@ function SuccessContent() {
         console.log("[v0] Database verification result:", verifyData);
 
         setVerificationStatus({
-          booking: !!verifyData.booking,
-          payment: !!verifyData.payment,
-          customer: !!verifyData.customer,
+          booking: !!verifyData.amount_total,
+          payment: !!verifyData.payment_status,
+          customer: !!verifyData?.customer_details?.email,
           synced: verifyData.synced,
         });
 
@@ -253,7 +253,7 @@ function SuccessContent() {
                         : "text-yellow-600"
                     }
                   >
-                    {verificationStatus.booking ? "✓ Saved" : "⏳ Processing"}
+                    {verificationStatus.booking ? "✓ " : "⏳"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -265,7 +265,7 @@ function SuccessContent() {
                         : "text-yellow-600"
                     }
                   >
-                    {verificationStatus.payment ? "✓ Saved" : "⏳ Processing"}
+                    {verificationStatus.payment ? "✓" : "⏳"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -277,7 +277,7 @@ function SuccessContent() {
                         : "text-yellow-600"
                     }
                   >
-                    {verificationStatus.customer ? "✓ Saved" : "⏳ Processing"}
+                    {verificationStatus.customer ? "✓" : "⏳"}
                   </span>
                 </div>
               </div>

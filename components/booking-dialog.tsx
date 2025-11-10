@@ -1,109 +1,124 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { BookingCalendar, type TimeSlot } from "@/components/booking-calendar"
-import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { BookingCalendar, type TimeSlot } from "@/components/booking-calendar";
+import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 
 interface BookingDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   packageData: {
-    id: string
-    name: string
-    price: number
-  }
+    id: string;
+    name: string;
+    price: number;
+  };
 }
 
-type Step = "datetime" | "details" | "payment"
+type Step = "datetime" | "details" | "payment";
 
-export function BookingDialog({ open, onOpenChange, packageData }: BookingDialogProps) {
-  const router = useRouter()
-  const [step, setStep] = useState<Step>("datetime")
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
-  const [selectedTime, setSelectedTime] = useState<TimeSlot | null>(null)
-  const [isProcessing, setIsProcessing] = useState(false)
+export function BookingDialog({
+  open,
+  onOpenChange,
+  packageData,
+}: BookingDialogProps) {
+  const router = useRouter();
+  const [step, setStep] = useState<Step>("datetime");
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedTime, setSelectedTime] = useState<TimeSlot | null>(null);
+  const [selectedSlotId, setSelectedSlotId] = useState(null);
+
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Form data
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
-  })
+  });
 
   const handleSlotSelect = (date: Date, timeSlot: TimeSlot) => {
-    setSelectedDate(date)
-    setSelectedTime(timeSlot)
-    setStep("details")
-  }
+    setSelectedDate(date);
+    setSelectedTime(timeSlot);
+
+    setStep("details");
+  };
 
   const handleBack = () => {
-    if (step === "details") setStep("datetime")
-    else if (step === "payment") setStep("details")
-  }
+    if (step === "details") setStep("datetime");
+    else if (step === "payment") setStep("details");
+  };
 
   const handleDetailsSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    setStep("payment")
-  }
+    e.preventDefault();
+    setStep("payment");
+  };
 
   const handlePayment = async () => {
-    if (!selectedDate || !selectedTime) return
+    if (!selectedDate || !selectedTime) return;
 
-    setIsProcessing(true)
+    setIsProcessing(true);
 
     try {
-      const dateStr = selectedDate.toISOString().split("T")[0]
+      const dateStr = selectedDate.toISOString().split("T")[0];
 
       const response = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           bookingData: {
+            package_id: packageData.id,
             serviceName: packageData.name,
             price: packageData.price,
             date: dateStr,
             time: selectedTime.time,
+            time_slot_id: selectedTime.slot_id,
             customerName: formData.name,
             customerEmail: formData.email,
             customerPhone: formData.phone,
           },
         }),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (data.url) {
-        window.location.href = data.url
+        window.location.href = data.url;
       } else {
-        throw new Error("No checkout URL received")
+        throw new Error("No checkout URL received");
       }
     } catch (error) {
-      console.error("Payment error:", error)
-      alert("Failed to process payment. Please try again.")
-      setIsProcessing(false)
+      console.error("Payment error:", error);
+      alert("Failed to process payment. Please try again.");
+      setIsProcessing(false);
     }
-  }
+  };
 
   const resetDialog = () => {
-    setStep("datetime")
-    setSelectedDate(null)
-    setSelectedTime(null)
-    setFormData({ name: "", email: "", phone: "" })
-  }
+    setStep("datetime");
+    setSelectedDate(null);
+    setSelectedTime(null);
+    setFormData({ name: "", email: "", phone: "" });
+  };
 
   return (
     <Dialog
       open={open}
       onOpenChange={(open) => {
-        onOpenChange(open)
-        if (!open) resetDialog()
+        onOpenChange(open);
+        if (!open) resetDialog();
       }}
     >
       <DialogContent className="lg:min-w-4xl max-h-[90vh] overflow-y-auto">
@@ -114,7 +129,8 @@ export function BookingDialog({ open, onOpenChange, packageData }: BookingDialog
             {step === "payment" && "Confirm & Pay"}
           </DialogTitle>
           <DialogDescription>
-            {step === "datetime" && `Choose an available slot for your ${packageData.name} package`}
+            {step === "datetime" &&
+              `Choose an available slot for your ${packageData.name} package`}
             {step === "details" && "Enter your contact information"}
             {step === "payment" && "Review your booking and proceed to payment"}
           </DialogDescription>
@@ -123,7 +139,11 @@ export function BookingDialog({ open, onOpenChange, packageData }: BookingDialog
         <div className="space-y-6">
           {/* Step 1: Date & Time Selection */}
           {step === "datetime" && (
-            <BookingCalendar onSelectSlot={handleSlotSelect} serviceName={packageData.name} price={packageData.price} />
+            <BookingCalendar
+              onSelectSlot={handleSlotSelect}
+              serviceName={packageData.name}
+              price={packageData.price}
+            />
           )}
 
           {/* Step 2: Booking Details Form */}
@@ -143,7 +163,9 @@ export function BookingDialog({ open, onOpenChange, packageData }: BookingDialog
                     id="name"
                     required
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
                     placeholder="John Doe"
                   />
                 </div>
@@ -155,7 +177,9 @@ export function BookingDialog({ open, onOpenChange, packageData }: BookingDialog
                     type="email"
                     required
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
                     placeholder="john@example.com"
                   />
                 </div>
@@ -167,14 +191,21 @@ export function BookingDialog({ open, onOpenChange, packageData }: BookingDialog
                     type="tel"
                     required
                     value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, phone: e.target.value })
+                    }
                     placeholder="+1 (555) 000-0000"
                   />
                 </div>
               </div>
 
               <div className="flex gap-3 pt-4">
-                <Button type="button" variant="outline" onClick={handleBack} className="flex-1 bg-transparent">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleBack}
+                  className="flex-1 bg-transparent"
+                >
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back
                 </Button>
@@ -198,7 +229,8 @@ export function BookingDialog({ open, onOpenChange, packageData }: BookingDialog
                   <div className="flex justify-between">
                     <span className="font-medium">Date & Time</span>
                     <span>
-                      {selectedDate?.toLocaleDateString()} at {selectedTime?.time}
+                      {selectedDate?.toLocaleDateString()} at{" "}
+                      {selectedTime?.time}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -231,7 +263,11 @@ export function BookingDialog({ open, onOpenChange, packageData }: BookingDialog
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back
                 </Button>
-                <Button onClick={handlePayment} disabled={isProcessing} className="flex-1">
+                <Button
+                  onClick={handlePayment}
+                  disabled={isProcessing}
+                  className="flex-1"
+                >
                   {isProcessing ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -250,5 +286,5 @@ export function BookingDialog({ open, onOpenChange, packageData }: BookingDialog
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

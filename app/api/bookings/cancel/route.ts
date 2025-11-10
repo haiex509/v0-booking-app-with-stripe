@@ -83,17 +83,20 @@ export async function POST(req: NextRequest) {
     }
 
     // Update booking status
-    const { error: updateError } = await supabase
+    const { data, error: updateError } = await supabase
       .from("bookings")
       .update({
         status: refundAmount > 0 ? "refunded" : "cancelled",
+        book_status: refundAmount > 0 ? "refunded" : "cancelled",
         cancelled_at: new Date().toISOString(),
         cancelled_by: user.id,
         cancellation_reason: reason,
         refund_amount: refundAmount,
         refund_status: refundStatus,
       })
-      .eq("id", bookingId);
+      .eq("id", bookingId)
+      .select("*,package:package_id(*)")
+      .single();
 
     if (updateError) {
       console.error("[v0] Error updating booking:", updateError);
@@ -103,26 +106,158 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { data: booked, error: errorBooked } = await resend.emails.send({
-      from: `${process.env.EMAIL_FROM_ADDRESS}`,
-      to: [booking?.customer_email],
-      subject: "Cancel Boocking",
-      html: JSON.stringify({
-        status: refundAmount > 0 ? "refunded" : "cancelled",
-        cancelled_at: new Date().toISOString(),
-        cancelled_by: user.id,
-        cancellation_reason: reason,
-        refund_amount: refundAmount,
-        refund_status: refundStatus,
-      }),
-      // react: EmailTemplate({ firstName: 'John' }),
-    });
+    const status = refundAmount > 0 ? "refunded" : "cancelled";
 
-    console.log(booked);
+    // const bookingUpdate = {
+    //   status,
+    //   cancelled_at: new Date().toISOString(),
+    //   cancelled_by: user.id,
+    //   cancellation_reason: reason,
+    //   refund_amount: refundAmount,
+    //   refund_status: refundStatus,
+    // };
 
-    if (errorBooked) {
-      console.log(errorBooked);
-    }
+    const subject =
+      status === "refunded"
+        ? "Your Booking Has Been Refunded"
+        : "Your Booking Has Been Cancelled";
+
+    const message =
+      status === "refunded"
+        ? `Your booking for <strong>${data?.package?.name}</strong> has been cancelled and a refund of <strong>$${refundAmount}</strong> has been processed.`
+        : `Your booking for <strong>${data?.package?.name}</strong> has been cancelled.`;
+
+    const refundSection =
+      status === "refunded"
+        ? `
+      <tr>
+        <td style="font-size:14px;"><strong>Refund Amount:</strong></td>
+        <td style="font-size:14px;">$${refundAmount}</td>
+      </tr>
+      <tr>
+        <td style="font-size:14px;"><strong>Refund Status:</strong></td>
+        <td style="font-size:14px;">${refundStatus}</td>
+      </tr>`
+        : "";
+
+    const reasonSection = reason
+      ? `
+      <tr>
+        <td style="font-size:14px;"><strong>Reason:</strong></td>
+        <td style="font-size:14px;">${reason}</td>
+      </tr>`
+      : "";
+
+    const { data: cancelled, error: errorCancelled } = await resend.emails.send(
+      {
+        from: `${process.env.EMAIL_FROM_ADDRESS}`,
+        to: [data?.customer_email],
+        subject,
+        html: `
+  <html lang="en">
+    <head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+      <meta name="x-apple-disable-message-reformatting" />
+      <title>${subject}</title>
+    </head>
+    <body style="background-color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,'Helvetica Neue',sans-serif;">
+      <table width="100%" cellpadding="0" cellspacing="0" align="center">
+        <tbody>
+          <tr>
+            <td>
+              <table align="center" width="100%" style="max-width:600px;margin:auto;padding:40px 20px;">
+                <tbody>
+                  <tr>
+                    <td style="text-align:center;">
+                      <img
+                        src="https://fhmfjbiifzdpdcmmrisi.supabase.co/storage/v1/object/public/haitianhubstudio/haitianhubstudio_logo.png"
+                        alt="haitianhubstudio_logo"
+                        width="160"
+                        style="display:block;margin:auto;border:none;outline:none;"
+                      />
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding-top:24px;text-align:left;">
+                      <p style="font-size:16px;line-height:24px;margin:0 0 12px;">Hi ${data?.customer_name},</p>
+                      <p style="font-size:16px;line-height:24px;margin:0 0 16px;">${message}</p>
+
+                      <table width="100%" cellpadding="6" cellspacing="0" style="border:1px solid #eaeaea;border-radius:6px;margin-top:20px;">
+                        <tbody>
+                          <tr>
+                            <td style="font-size:14px;"><strong>Date:</strong></td>
+                            <td style="font-size:14px;">${data?.booking_date}</td>
+                          </tr>
+                          <tr>
+                            <td style="font-size:14px;"><strong>Time:</strong></td>
+                            <td style="font-size:14px;">${data?.booking_time}</td>
+                          </tr>
+                          <tr>
+                            <td style="font-size:14px;"><strong>Price:</strong></td>
+                            <td style="font-size:14px;">$${data?.price}</td>
+                          </tr>
+                          ${refundSection}
+                          ${reasonSection}
+                          <tr>
+                            <td style="font-size:14px;"><strong>Book ID:</strong></td>
+                            <td style="font-size:14px;">${data?.id}</td>
+                          </tr>
+                          <tr>
+                            <td style="font-size:14px;"><strong>Session ID:</strong></td>
+                            <td style="font-size:14px;">${data?.stripe_session_id}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+
+                      <p style="font-size:16px;line-height:24px;margin-top:24px;">
+                        If you have any questions, please contact our support team at contact@haitianhubstudio.com
+                      </p>
+
+                   
+
+                      <p style="font-size:16px;line-height:24px;margin-top:24px;">
+                        Best,<br/>The Team
+                      </p>
+
+                      <hr style="border:none;border-top:1px solid #eaeaea;margin:30px 0;" />
+
+                      <p style="font-size:12px;color:#8898aa;text-align:center;">
+                        © 2025 Haitian Hub Studio, All rights reserved.<br/>
+                        300 NE 44TH ST, OAKLAND PARK, FLORIDA 33334
+                      </p>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </body>
+  </html>`,
+      }
+    );
+
+    // const { data: booked, error: errorBooked } = await resend.emails.send({
+    //   from: `${process.env.EMAIL_FROM_ADDRESS}`,
+    //   to: [booking?.customer_email],
+    //   subject: "Cancel Boocking",
+    //   html: JSON.stringify({
+    //     status: refundAmount > 0 ? "refunded" : "cancelled",
+    //     cancelled_at: new Date().toISOString(),
+    //     cancelled_by: user.id,
+    //     cancellation_reason: reason,
+    //     refund_amount: refundAmount,
+    //     refund_status: refundStatus,
+    //   }),
+    //   // react: EmailTemplate({ firstName: 'John' }),
+    // });
+
+    // console.log(booked);
+
+    // if (errorBooked) {
+    //   console.log(errorBooked);
+    // }
 
     console.log("[v0] Booking cancelled successfully:", bookingId);
 

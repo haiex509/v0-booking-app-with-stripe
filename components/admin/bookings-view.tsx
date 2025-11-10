@@ -42,6 +42,7 @@ interface Booking {
   booking_time: string;
   end_time: string;
   status: string;
+  book_status: string;
   price: number;
   customer_name: string;
   customer_email: string;
@@ -83,7 +84,7 @@ export function BookingsView() {
       const supabase = getSupabaseBrowserClient();
       const { data, error } = await supabase
         .from("bookings")
-        .select("*")
+        .select("*,package:package_id(*)")
         .order("booking_date", { ascending: false })
         .order("booking_time", { ascending: false });
 
@@ -159,6 +160,7 @@ export function BookingsView() {
       pending: { variant: "secondary", label: "Pending" },
       confirmed: { variant: "default", label: "Confirmed" },
       completed: { variant: "outline", label: "Completed" },
+      complete: { variant: "outline", label: "Completed" },
       cancelled: { variant: "destructive", label: "Cancelled" },
       refunded: { variant: "destructive", label: "Refunded" },
     };
@@ -202,7 +204,7 @@ export function BookingsView() {
   return (
     <div className="space-y-6">
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -221,7 +223,7 @@ export function BookingsView() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {bookings.filter((b) => b.status === "confirmed").length}
+              {bookings.filter((b) => b.book_status === "confirmed").length}
             </div>
           </CardContent>
         </Card>
@@ -234,7 +236,9 @@ export function BookingsView() {
             <div className="text-2xl font-bold">
               {
                 bookings.filter(
-                  (b) => b.status === "cancelled" || b.status === "refunded"
+                  (b) =>
+                    b.book_status === "cancelled" ||
+                    b.book_status === "refunded"
                 ).length
               }
             </div>
@@ -250,7 +254,9 @@ export function BookingsView() {
               $
               {bookings
                 .filter(
-                  (b) => b.status === "confirmed" || b.status === "completed"
+                  (b) =>
+                    b.book_status === "confirmed" ||
+                    b.book_status === "completed"
                 )
                 .reduce((sum, b) => sum + (b?.price || 0), 0)
                 .toFixed(2)}
@@ -312,6 +318,7 @@ export function BookingsView() {
               <TableHead>Date & Time</TableHead>
               <TableHead>Amount</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Paid</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -348,7 +355,7 @@ export function BookingsView() {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell>{booking.package_name}</TableCell>
+                  <TableCell>{booking?.package?.name}</TableCell>
                   <TableCell>
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
@@ -372,6 +379,8 @@ export function BookingsView() {
                     )}
                   </TableCell>
                   <TableCell>{getStatusBadge(booking.status)}</TableCell>
+                  <TableCell>{getStatusBadge(booking.book_status)}</TableCell>
+
                   <TableCell>
                     <div className="flex gap-2">
                       {canManageBookings &&

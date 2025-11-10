@@ -1,102 +1,216 @@
-import type * as React from "react"
+import * as React from "react";
 
-interface BookingConfirmationEmailProps {
-  customerName: string
-  serviceName: string
-  bookingDate: string
-  bookingTime: string
-  price: number
-  bookingId: string
-}
-
-export const BookingConfirmationEmail: React.FC<BookingConfirmationEmailProps> = ({
-  customerName,
+export const BookingConfirmationEmail = ({
   serviceName,
-  bookingDate,
-  bookingTime,
   price,
-  bookingId,
+  date,
+  time,
+  customerName,
+  customerEmail,
+  customerPhone,
+  sessionId,
+  status,
 }) => (
-  <div style={{ fontFamily: "Arial, sans-serif", maxWidth: "600px", margin: "0 auto" }}>
-    <div style={{ backgroundColor: "#10b981", padding: "20px", textAlign: "center" }}>
-      <h1 style={{ color: "white", margin: 0 }}>Booking Confirmed! ✓</h1>
-    </div>
-
-    <div style={{ padding: "30px", backgroundColor: "#f9fafb" }}>
-      <p style={{ fontSize: "16px", color: "#374151" }}>Hi {customerName},</p>
-
-      <p style={{ fontSize: "16px", color: "#374151" }}>
-        Great news! Your booking has been confirmed and payment has been processed successfully.
-      </p>
-
-      <div style={{ backgroundColor: "white", padding: "20px", borderRadius: "8px", marginTop: "20px" }}>
-        <h2 style={{ color: "#1f2937", fontSize: "18px", marginTop: 0 }}>Booking Details</h2>
-
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+  <html lang="en">
+    <head>
+      <meta httpEquiv="Content-Type" content="text/html; charset=UTF-8" />
+      <meta name="x-apple-disable-message-reformatting" />
+      <title>Booking Confirmation</title>
+    </head>
+    <body
+      style={{
+        backgroundColor: "#ffffff",
+        fontFamily:
+          "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,'Helvetica Neue',sans-serif",
+      }}
+    >
+      <table
+        width="100%"
+        cellPadding="0"
+        cellSpacing="0"
+        role="presentation"
+        align="center"
+      >
+        <tbody>
           <tr>
-            <td style={{ padding: "10px 0", color: "#6b7280", fontSize: "14px" }}>Service:</td>
-            <td
-              style={{ padding: "10px 0", color: "#1f2937", fontSize: "14px", fontWeight: "bold", textAlign: "right" }}
-            >
-              {serviceName}
+            <td>
+              <table
+                align="center"
+                width="100%"
+                style={{
+                  maxWidth: "600px",
+                  margin: "auto",
+                  padding: "40px 20px",
+                }}
+              >
+                <tbody>
+                  <tr>
+                    <td style={{ textAlign: "center" }}>
+                      <img
+                        src="https://react-email-demo-rkbbz67tn-resend.vercel.app/static/koala-logo.png"
+                        alt="Company Logo"
+                        width="160"
+                        style={{
+                          display: "block",
+                          margin: "auto",
+                          border: "none",
+                          outline: "none",
+                        }}
+                      />
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style={{ paddingTop: "24px", textAlign: "left" }}>
+                      <p
+                        style={{
+                          fontSize: "16px",
+                          lineHeight: "24px",
+                          margin: "0 0 12px",
+                        }}
+                      >
+                        Hi {`${customerName}`},
+                      </p>
+                      <p
+                        style={{
+                          fontSize: "16px",
+                          lineHeight: "24px",
+                          margin: "0 0 16px",
+                        }}
+                      >
+                        Thank you for booking{" "}
+                        <strong>{`${serviceName}`}</strong>. Your session is
+                        currently <strong>{`${status}`}</strong>.
+                      </p>
+
+                      <table
+                        width="100%"
+                        cellPadding="6"
+                        cellSpacing="0"
+                        style={{
+                          border: "1px solid #eaeaea",
+                          borderRadius: "6px",
+                          marginTop: "20px",
+                        }}
+                      >
+                        <tbody>
+                          <tr>
+                            <td style={{ fontSize: "14px" }}>
+                              📅 <strong>Date:</strong>
+                            </td>
+                            <td style={{ fontSize: "14px" }}>{`${date}`}</td>
+                          </tr>
+                          <tr>
+                            <td style={{ fontSize: "14px" }}>
+                              🕒 <strong>Time:</strong>
+                            </td>
+                            <td style={{ fontSize: "14px" }}>{`${time}`}</td>
+                          </tr>
+                          <tr>
+                            <td style={{ fontSize: "14px" }}>
+                              💰 <strong>Price:</strong>
+                            </td>
+                            <td style={{ fontSize: "14px" }}>${`${price}`}</td>
+                          </tr>
+                          <tr>
+                            <td style={{ fontSize: "14px" }}>
+                              📧 <strong>Email:</strong>
+                            </td>
+                            <td style={{ fontSize: "14px" }}>
+                              {`${customerEmail}`}
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style={{ fontSize: "14px" }}>
+                              📞 <strong>Phone:</strong>
+                            </td>
+                            <td style={{ fontSize: "14px" }}>
+                              {`${customerPhone}`}
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style={{ fontSize: "14px" }}>
+                              🆔 <strong>Session ID:</strong>
+                            </td>
+                            <td
+                              style={{ fontSize: "14px" }}
+                            >{`${sessionId}`}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+
+                      <p
+                        style={{
+                          fontSize: "16px",
+                          lineHeight: "24px",
+                          marginTop: "24px",
+                        }}
+                      >
+                        Once your payment is confirmed, we’ll send you a
+                        follow-up email with the session details.
+                      </p>
+
+                      <div
+                        style={{
+                          textAlign: "center",
+                          marginTop: "30px",
+                        }}
+                      >
+                        <a
+                          href={`https://yourdomain.com/session/${sessionId}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{
+                            backgroundColor: "#5f51e8",
+                            color: "#ffffff",
+                            padding: "12px 24px",
+                            borderRadius: "4px",
+                            textDecoration: "none",
+                            fontSize: "16px",
+                          }}
+                        >
+                          View Booking
+                        </a>
+                      </div>
+
+                      <p
+                        style={{
+                          fontSize: "16px",
+                          lineHeight: "24px",
+                          marginTop: "24px",
+                        }}
+                      >
+                        Best,
+                        <br />
+                        The Team
+                      </p>
+
+                      <hr
+                        style={{
+                          border: "none",
+                          borderTop: "1px solid #eaeaea",
+                          margin: "30px 0",
+                        }}
+                      />
+
+                      <p
+                        style={{
+                          fontSize: "12px",
+                          color: "#8898aa",
+                          textAlign: "center",
+                        }}
+                      >
+                        © 2025 Your Company, All rights reserved.
+                        <br />
+                        470 Noor Ave STE B #1148, South San Francisco, CA 94080
+                      </p>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </td>
           </tr>
-          <tr>
-            <td style={{ padding: "10px 0", color: "#6b7280", fontSize: "14px" }}>Date:</td>
-            <td
-              style={{ padding: "10px 0", color: "#1f2937", fontSize: "14px", fontWeight: "bold", textAlign: "right" }}
-            >
-              {new Date(bookingDate).toLocaleDateString("en-US", {
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
-            </td>
-          </tr>
-          <tr>
-            <td style={{ padding: "10px 0", color: "#6b7280", fontSize: "14px" }}>Time:</td>
-            <td
-              style={{ padding: "10px 0", color: "#1f2937", fontSize: "14px", fontWeight: "bold", textAlign: "right" }}
-            >
-              {bookingTime}
-            </td>
-          </tr>
-          <tr>
-            <td style={{ padding: "10px 0", color: "#6b7280", fontSize: "14px" }}>Amount Paid:</td>
-            <td
-              style={{ padding: "10px 0", color: "#10b981", fontSize: "16px", fontWeight: "bold", textAlign: "right" }}
-            >
-              ${price.toFixed(2)}
-            </td>
-          </tr>
-          <tr>
-            <td style={{ padding: "10px 0", color: "#6b7280", fontSize: "14px" }}>Booking ID:</td>
-            <td style={{ padding: "10px 0", color: "#6b7280", fontSize: "12px", textAlign: "right" }}>{bookingId}</td>
-          </tr>
-        </table>
-      </div>
-
-      <div style={{ marginTop: "30px", padding: "15px", backgroundColor: "#dbeafe", borderRadius: "8px" }}>
-        <p style={{ margin: 0, fontSize: "14px", color: "#1e40af" }}>
-          <strong>What's next?</strong>
-          <br />
-          We'll send you a reminder 24 hours before your appointment. If you need to make any changes, please contact us
-          as soon as possible.
-        </p>
-      </div>
-
-      <p style={{ fontSize: "14px", color: "#6b7280", marginTop: "30px" }}>Thank you for choosing our service!</p>
-
-      <p style={{ fontSize: "12px", color: "#9ca3af", marginTop: "20px" }}>
-        If you have any questions, please don't hesitate to contact us.
-      </p>
-    </div>
-
-    <div style={{ padding: "20px", textAlign: "center", backgroundColor: "#f3f4f6" }}>
-      <p style={{ margin: 0, fontSize: "12px", color: "#6b7280" }}>
-        © {new Date().getFullYear()} Your Company. All rights reserved.
-      </p>
-    </div>
-  </div>
-)
+        </tbody>
+      </table>
+    </body>
+  </html>
+);
