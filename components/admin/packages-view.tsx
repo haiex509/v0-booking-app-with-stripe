@@ -1,13 +1,13 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -15,158 +15,181 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog"
-import { Pencil, Trash2, Plus, Star, Search, Filter } from "lucide-react"
-import { packageStorage, type ProductionPackage } from "@/lib/package-storage"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { usePermissions } from "@/hooks/use-permissions"
+} from "@/components/ui/dialog";
+import { Pencil, Trash2, Plus, Star, Search, Filter } from "lucide-react";
+import { packageStorage, type ProductionPackage } from "@/lib/package-storage";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { usePermissions } from "@/hooks/use-permissions";
 
 export function PackagesView() {
-  const { can, isViewer } = usePermissions()
-  const canManagePackages = can("manage_packages")
+  const { can, isViewer } = usePermissions();
+  const canManagePackages = can("manage_packages");
 
-  const [packages, setPackages] = useState<ProductionPackage[]>([])
-  const [filteredPackages, setFilteredPackages] = useState<ProductionPackage[]>([])
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [editingPackage, setEditingPackage] = useState<ProductionPackage | null>(null)
+  const [packages, setPackages] = useState<ProductionPackage[]>([]);
+  const [filteredPackages, setFilteredPackages] = useState<ProductionPackage[]>(
+    []
+  );
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingPackage, setEditingPackage] =
+    useState<ProductionPackage | null>(null);
   const [formData, setFormData] = useState({
     name: "",
+    category: "",
     price: "",
     features: [""],
     popular: false,
-  })
+  });
 
-  const [searchQuery, setSearchQuery] = useState("")
-  const [priceFilter, setPriceFilter] = useState<string>("all")
-  const [popularFilter, setPopularFilter] = useState<string>("all")
-  const [showFilters, setShowFilters] = useState(false)
-
-  useEffect(() => {
-    loadPackages()
-  }, [])
+  const [searchQuery, setSearchQuery] = useState("");
+  const [priceFilter, setPriceFilter] = useState<string>("all");
+  const [popularFilter, setPopularFilter] = useState<string>("all");
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
-    applyFilters()
-  }, [packages, searchQuery, priceFilter, popularFilter])
+    loadPackages();
+  }, []);
+
+  useEffect(() => {
+    applyFilters();
+  }, [packages, searchQuery, priceFilter, popularFilter]);
 
   const loadPackages = async () => {
-    const allPackages = await packageStorage.getAll()
-    setPackages(allPackages)
-  }
+    const allPackages = await packageStorage.getAll();
+
+    setPackages(allPackages);
+  };
 
   const applyFilters = () => {
-    let result = [...packages]
+    let result = [...packages];
 
     // Apply search
     if (searchQuery.trim()) {
-      result = packageStorage.search(searchQuery)
+      result = packageStorage.search(searchQuery);
     }
 
     // Apply price filter
     if (priceFilter !== "all") {
-      const filters: { minPrice?: number; maxPrice?: number } = {}
+      const filters: { minPrice?: number; maxPrice?: number } = {};
       if (priceFilter === "under500") {
-        filters.maxPrice = 500
+        filters.maxPrice = 500;
       } else if (priceFilter === "500to1000") {
-        filters.minPrice = 500
-        filters.maxPrice = 1000
+        filters.minPrice = 500;
+        filters.maxPrice = 1000;
       } else if (priceFilter === "over1000") {
-        filters.minPrice = 1000
+        filters.minPrice = 1000;
       }
       result = result.filter((pkg) => {
-        if (filters.minPrice !== undefined && pkg.price < filters.minPrice) return false
-        if (filters.maxPrice !== undefined && pkg.price > filters.maxPrice) return false
-        return true
-      })
+        if (filters.minPrice !== undefined && pkg.price < filters.minPrice)
+          return false;
+        if (filters.maxPrice !== undefined && pkg.price > filters.maxPrice)
+          return false;
+        return true;
+      });
     }
 
     // Apply popular filter
     if (popularFilter === "popular") {
-      result = result.filter((pkg) => pkg.popular)
+      result = result.filter((pkg) => pkg.popular);
     } else if (popularFilter === "regular") {
-      result = result.filter((pkg) => !pkg.popular)
+      result = result.filter((pkg) => !pkg.popular);
     }
 
-    setFilteredPackages(result)
-  }
+    setFilteredPackages(result);
+  };
 
   const resetFilters = () => {
-    setSearchQuery("")
-    setPriceFilter("all")
-    setPopularFilter("all")
-  }
+    setSearchQuery("");
+    setPriceFilter("all");
+    setPopularFilter("all");
+  };
 
   const handleCreate = () => {
-    setEditingPackage(null)
-    setFormData({ name: "", price: "", features: [""], popular: false })
-    setIsDialogOpen(true)
-  }
+    setEditingPackage(null);
+    setFormData({ name: "", price: "", features: [""], popular: false });
+    setIsDialogOpen(true);
+  };
 
   const handleEdit = (pkg: ProductionPackage) => {
-    setEditingPackage(pkg)
+    setEditingPackage(pkg);
+
     setFormData({
+      category: pkg.category,
       name: pkg.name,
       price: pkg.price.toString(),
       features: pkg.features,
       popular: pkg.popular || false,
-    })
-    setIsDialogOpen(true)
-  }
+    });
+    setIsDialogOpen(true);
+  };
 
   const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this package?")) {
-      await packageStorage.delete(id)
-      loadPackages()
+      await packageStorage.delete(id);
+      loadPackages();
     }
-  }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     const packageData = {
+      category: formData.category?.toUpperCase(),
       name: formData.name,
       price: Number.parseFloat(formData.price),
       features: formData.features.filter((f) => f.trim() !== ""),
       popular: formData.popular,
-    }
+    };
 
     if (editingPackage) {
-      await packageStorage.update(editingPackage.id, packageData)
+      await packageStorage.update(editingPackage.id, packageData);
     } else {
-      await packageStorage.create(packageData)
+      await packageStorage.create(packageData);
     }
 
-    setIsDialogOpen(false)
-    loadPackages()
-  }
+    setIsDialogOpen(false);
+    loadPackages();
+  };
 
   const addFeature = () => {
-    setFormData({ ...formData, features: [...formData.features, ""] })
-  }
+    setFormData({ ...formData, features: [...formData.features, ""] });
+  };
 
   const updateFeature = (index: number, value: string) => {
-    const newFeatures = [...formData.features]
-    newFeatures[index] = value
-    setFormData({ ...formData, features: newFeatures })
-  }
+    const newFeatures = [...formData.features];
+    newFeatures[index] = value;
+    setFormData({ ...formData, features: newFeatures });
+  };
 
   const removeFeature = (index: number) => {
-    const newFeatures = formData.features.filter((_, i) => i !== index)
-    setFormData({ ...formData, features: newFeatures })
-  }
+    const newFeatures = formData.features.filter((_, i) => i !== index);
+    setFormData({ ...formData, features: newFeatures });
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Production Packages</h2>
+          <h2 className="text-2xl font-bold text-foreground">
+            Production Packages
+          </h2>
           <p className="text-sm text-muted-foreground">
-            {isViewer ? "View production packages and pricing" : "Manage your production packages and pricing"}
+            {isViewer
+              ? "View production packages and pricing"
+              : "Manage your production packages and pricing"}
           </p>
         </div>
         {canManagePackages && (
-          <Button onClick={handleCreate} className="bg-primary text-primary-foreground hover:bg-primary/90">
+          <Button
+            onClick={handleCreate}
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+          >
             <Plus className="h-4 w-4 mr-2" />
             Add Package
           </Button>
@@ -215,7 +238,10 @@ export function PackagesView() {
 
                 <div className="space-y-2">
                   <Label className="text-foreground">Package Type</Label>
-                  <Select value={popularFilter} onValueChange={setPopularFilter}>
+                  <Select
+                    value={popularFilter}
+                    onValueChange={setPopularFilter}
+                  >
                     <SelectTrigger className="bg-background border-border text-foreground">
                       <SelectValue placeholder="All packages" />
                     </SelectTrigger>
@@ -243,8 +269,13 @@ export function PackagesView() {
               <span>
                 Showing {filteredPackages.length} of {packages.length} packages
               </span>
-              {(searchQuery || priceFilter !== "all" || popularFilter !== "all") && (
-                <Badge variant="secondary" className="bg-primary/20 text-primary">
+              {(searchQuery ||
+                priceFilter !== "all" ||
+                popularFilter !== "all") && (
+                <Badge
+                  variant="secondary"
+                  className="bg-primary/20 text-primary"
+                >
                   Filters active
                 </Badge>
               )}
@@ -256,7 +287,9 @@ export function PackagesView() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {filteredPackages.length === 0 ? (
           <div className="col-span-full text-center py-12">
-            <p className="text-muted-foreground">No packages found matching your criteria</p>
+            <p className="text-muted-foreground">
+              No packages found matching your criteria
+            </p>
             <Button variant="link" onClick={resetFilters} className="mt-2">
               Clear filters
             </Button>
@@ -321,10 +354,27 @@ export function PackagesView() {
               {editingPackage ? "Edit Package" : "Create New Package"}
             </DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              {editingPackage ? "Update the package details below" : "Add a new production package to your offerings"}
+              {editingPackage
+                ? "Update the package details below"
+                : "Add a new production package to your offerings"}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name" className="text-foreground">
+                Category
+              </Label>
+              <Input
+                id="category"
+                value={formData.category}
+                onChange={(e) =>
+                  setFormData({ ...formData, category: e.target.value })
+                }
+                placeholder="e.g., BOOKING"
+                required
+                className="bg-background border-border text-foreground"
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="name" className="text-foreground">
                 Package Name
@@ -332,7 +382,9 @@ export function PackagesView() {
               <Input
                 id="name"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
                 placeholder="e.g., Premium Package"
                 required
                 className="bg-background border-border text-foreground"
@@ -348,7 +400,9 @@ export function PackagesView() {
                 type="number"
                 step="0.01"
                 value={formData.price}
-                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, price: e.target.value })
+                }
                 placeholder="399"
                 required
                 className="bg-background border-border text-foreground"
@@ -398,9 +452,14 @@ export function PackagesView() {
               <Checkbox
                 id="popular"
                 checked={formData.popular}
-                onCheckedChange={(checked) => setFormData({ ...formData, popular: checked as boolean })}
+                onCheckedChange={(checked) =>
+                  setFormData({ ...formData, popular: checked as boolean })
+                }
               />
-              <Label htmlFor="popular" className="text-foreground cursor-pointer">
+              <Label
+                htmlFor="popular"
+                className="text-foreground cursor-pointer"
+              >
                 Mark as popular package
               </Label>
             </div>
@@ -414,7 +473,10 @@ export function PackagesView() {
               >
                 Cancel
               </Button>
-              <Button type="submit" className="bg-primary text-primary-foreground hover:bg-primary/90">
+              <Button
+                type="submit"
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+              >
                 {editingPackage ? "Update Package" : "Create Package"}
               </Button>
             </DialogFooter>
@@ -422,5 +484,5 @@ export function PackagesView() {
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }

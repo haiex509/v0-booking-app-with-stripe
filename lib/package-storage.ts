@@ -1,44 +1,54 @@
-import { getSupabaseBrowserClient } from "@/lib/supabase/client"
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export interface ProductionPackage {
-  id: string
-  name: string
-  price: number
-  features: string[]
-  popular?: boolean
-  is_active?: boolean
-  created_at: string
-  updated_at: string
+  id: string;
+  name: string;
+  category: string;
+  price: number;
+  features: string[];
+  popular?: boolean;
+  is_active?: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
-export type Package = ProductionPackage
+export type Package = ProductionPackage;
 
 export const packageStorage = {
-  getAll: async (): Promise<ProductionPackage[]> => {
-    const supabase = getSupabaseBrowserClient()
-    const { data, error } = await supabase
+  getAll: async (cat: string): Promise<ProductionPackage[]> => {
+    const supabase = getSupabaseBrowserClient();
+    let query = supabase
       .from("production_packages")
       .select("*")
-      .order("created_at", { ascending: true })
 
+      .order("created_at", { ascending: true });
+
+    if (cat) {
+      query.eq("category", cat);
+    }
+    const { data, error } = await query;
     if (error) {
-      console.error("[v0] Error fetching packages:", error)
-      return []
+      console.error("[v0] Error fetching packages:", error);
+      return [];
     }
 
     return (data || []).map((pkg) => ({
       ...pkg,
       features: pkg.features as string[],
-    }))
+    }));
   },
 
   getById: async (id: string): Promise<ProductionPackage | null> => {
-    const supabase = getSupabaseBrowserClient()
-    const { data, error } = await supabase.from("production_packages").select("*").eq("id", id).single()
+    const supabase = getSupabaseBrowserClient();
+    const { data, error } = await supabase
+      .from("production_packages")
+      .select("*")
+      .eq("id", id)
+      .single();
 
     if (error) {
-      console.error("[v0] Error fetching package:", error)
-      return null
+      console.error("[v0] Error fetching package:", error);
+      return null;
     }
 
     return data
@@ -46,16 +56,17 @@ export const packageStorage = {
           ...data,
           features: data.features as string[],
         }
-      : null
+      : null;
   },
 
   create: async (
-    pkg: Omit<ProductionPackage, "id" | "created_at" | "updated_at">,
+    pkg: Omit<ProductionPackage, "id" | "created_at" | "updated_at">
   ): Promise<ProductionPackage | null> => {
-    const supabase = getSupabaseBrowserClient()
+    const supabase = getSupabaseBrowserClient();
     const { data, error } = await supabase
       .from("production_packages")
       .insert({
+        category: pkg.category,
         name: pkg.name,
         price: pkg.price,
         features: pkg.features,
@@ -63,11 +74,11 @@ export const packageStorage = {
         is_active: pkg.is_active ?? true,
       })
       .select()
-      .single()
+      .single();
 
     if (error) {
-      console.error("[v0] Error creating package:", error)
-      return null
+      console.error("[v0] Error creating package:", error);
+      return null;
     }
 
     return data
@@ -75,19 +86,24 @@ export const packageStorage = {
           ...data,
           features: data.features as string[],
         }
-      : null
+      : null;
   },
 
   update: async (
     id: string,
-    updates: Partial<Omit<ProductionPackage, "id" | "created_at">>,
+    updates: Partial<Omit<ProductionPackage, "id" | "created_at">>
   ): Promise<ProductionPackage | null> => {
-    const supabase = getSupabaseBrowserClient()
-    const { data, error } = await supabase.from("production_packages").update(updates).eq("id", id).select().single()
+    const supabase = getSupabaseBrowserClient();
+    const { data, error } = await supabase
+      .from("production_packages")
+      .update(updates)
+      .eq("id", id)
+      .select()
+      .single();
 
     if (error) {
-      console.error("[v0] Error updating package:", error)
-      return null
+      console.error("[v0] Error updating package:", error);
+      return null;
     }
 
     return data
@@ -95,80 +111,83 @@ export const packageStorage = {
           ...data,
           features: data.features as string[],
         }
-      : null
+      : null;
   },
 
   delete: async (id: string): Promise<boolean> => {
-    const supabase = getSupabaseBrowserClient()
-    const { error } = await supabase.from("production_packages").delete().eq("id", id)
+    const supabase = getSupabaseBrowserClient();
+    const { error } = await supabase
+      .from("production_packages")
+      .delete()
+      .eq("id", id);
 
     if (error) {
-      console.error("[v0] Error deleting package:", error)
-      return false
+      console.error("[v0] Error deleting package:", error);
+      return false;
     }
 
-    return true
+    return true;
   },
 
   search: async (query: string): Promise<ProductionPackage[]> => {
-    const supabase = getSupabaseBrowserClient()
+    const supabase = getSupabaseBrowserClient();
     const { data, error } = await supabase
       .from("production_packages")
       .select("*")
-      .or(`name.ilike.%${query}%,features.cs.{${query}}`)
+      .or(`name.ilike.%${query}%,features.cs.{${query}}`);
 
     if (error) {
-      console.error("[v0] Error searching packages:", error)
-      return []
+      console.error("[v0] Error searching packages:", error);
+      return [];
     }
 
     return (data || []).map((pkg) => ({
       ...pkg,
       features: pkg.features as string[],
-    }))
+    }));
   },
 
   filter: async (filters: {
-    minPrice?: number
-    maxPrice?: number
-    popular?: boolean
-    isActive?: boolean
+    minPrice?: number;
+    maxPrice?: number;
+    popular?: boolean;
+    isActive?: boolean;
   }): Promise<ProductionPackage[]> => {
-    const supabase = getSupabaseBrowserClient()
-    let query = supabase.from("production_packages").select("*")
+    const supabase = getSupabaseBrowserClient();
+    let query = supabase.from("production_packages").select("*");
 
     if (filters.minPrice !== undefined) {
-      query = query.gte("price", filters.minPrice)
+      query = query.gte("price", filters.minPrice);
     }
     if (filters.maxPrice !== undefined) {
-      query = query.lte("price", filters.maxPrice)
+      query = query.lte("price", filters.maxPrice);
     }
     if (filters.popular !== undefined) {
-      query = query.eq("popular", filters.popular)
+      query = query.eq("popular", filters.popular);
     }
     if (filters.isActive !== undefined) {
-      query = query.eq("is_active", filters.isActive)
+      query = query.eq("is_active", filters.isActive);
     }
 
-    const { data, error } = await query
+    const { data, error } = await query;
 
     if (error) {
-      console.error("[v0] Error filtering packages:", error)
-      return []
+      console.error("[v0] Error filtering packages:", error);
+      return [];
     }
 
     return (data || []).map((pkg) => ({
       ...pkg,
       features: pkg.features as string[],
-    }))
+    }));
   },
-}
+};
 
 // Export convenience functions
-export const getPackages = packageStorage.getAll
-export const getPackageById = packageStorage.getById
-export const createPackage = packageStorage.create
-export const updatePackage = packageStorage.update
-export const deletePackage = packageStorage.delete
-export const searchPackages = packageStorage.search
-export const filterPackages = packageStorage.filter
+export const getPackages = packageStorage.getAll;
+export const getPackageById = packageStorage.getById;
+export const createPackage = packageStorage.create;
+export const updatePackage = packageStorage.update;
+export const deletePackage = packageStorage.delete;
+export const searchPackages = packageStorage.search;
+export const filterPackages = packageStorage.filter;

@@ -7,16 +7,19 @@ import { Check, Loader2 } from "lucide-react";
 import { BookingDialog } from "@/components/booking-dialog";
 import Link from "next/link";
 import { getPackages, type Package } from "@/lib/package-storage";
+import { useSearchParams } from "next/navigation";
 
 export default function Home() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
   const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(true);
+  const searchParams = useSearchParams();
+  const categoryValue = searchParams.get("category");
 
   useEffect(() => {
     const loadPackages = async () => {
-      const storedPackages = await getPackages();
+      const storedPackages = await getPackages(categoryValue || "");
       // Only show active packages on the public page
       const activePackages = storedPackages.filter((pkg) => pkg.is_active);
       setPackages(activePackages);
@@ -43,7 +46,10 @@ export default function Home() {
     return (
       <div className="min-h-screen bg-background">
         <div className="border-b border-border">
-          <div className="container mx-auto px-5 py-4 flex justify-end">
+          <div
+            className="
+           mx-auto px-5 py-4 flex justify-end"
+          >
             <Link href="/admin">
               <Button
                 variant="outline"
@@ -55,7 +61,10 @@ export default function Home() {
             </Link>
           </div>
         </div>
-        <div className="container py-12 px-5 flex items-center justify-center min-h-[60vh]">
+        <div
+          className="
+         py-12 px-5 flex items-center justify-center min-h-[60vh]"
+        >
           <div className="text-center space-y-4">
             <h2 className="text-2xl font-bold text-foreground">
               No Packages Available
@@ -72,7 +81,8 @@ export default function Home() {
   return (
     <div className="bg-background ">
       {/*  <div className="border-b border-border">
-        <div className="container mx-auto px-5 py-4 flex justify-end">
+        <div className="
+         mx-auto px-5 py-4 flex justify-end">
           <Link href="/admin">
             <Button
               variant="outline"
@@ -85,7 +95,10 @@ export default function Home() {
         </div>
       </div>*/}
 
-      <div className="container py-12 px-5 space-y-16  mx-auto">
+      <div
+        className="
+       py-12 px-5 space-y-16  mx-auto"
+      >
         <div className="text-center space-y-3 max-w-2xl mx-auto">
           <h1 className="text-5xl font-bold tracking-tight text-foreground">
             Production Packages
